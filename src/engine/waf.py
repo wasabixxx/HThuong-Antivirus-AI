@@ -137,6 +137,12 @@ class WAFEngine:
 
         regex_detected = sqli["detected"] or xss["detected"] or cmdi["detected"] or path["detected"]
 
+        # Tổng số rules match (dùng để đánh giá regex confidence)
+        total_regex_matches = (
+            sqli["matched_rules"] + xss["matched_rules"]
+            + cmdi["matched_rules"] + path["matched_rules"]
+        )
+
         attacks_found = []
         if sqli["detected"]:
             attacks_found.append("SQL Injection")
@@ -152,10 +158,31 @@ class WAFEngine:
         if ml_engine and ml_engine.is_loaded:
             ml_result = ml_engine.predict(payload)
 
-            # Hybrid logic:
-            # - ML bổ sung nếu regex không phát hiện
-            # - ML xác nhận nếu regex đã phát hiện
-            if ml_result["is_attack"] and not regex_detected:
+            # ===== HYBRID DECISION LOGIC =====
+            #
+            # Case 1: Regex detected, ML says safe → ML override nếu:
+            #   - Regex chỉ match 1 rule (low confidence, likely false positive)
+            #   - ML confidence safe >= 0.7
+            #   → Tin ML, bỏ qua regex false positive
+            #
+            # Case 2: Regex detected, ML cũng detected → Cả hai đồng ý → block
+            #
+            # Case 3: Regex clean, ML detected → ML bổ sung nếu confidence >= 0.7
+            #
+            # Case 4: Cả hai clean → safe
+            #
+
+            if regex_detected and not ml_result["is_attack"]:
+                # ML nói safe — kiểm tra xem regex có đang false positive không
+                if total_regex_matches <= 1 and ml_result["confidence"] >= 0.7:
+                    # Regex chỉ match 1 rule yếu, ML tự tin nói safe → override
+                    regex_detected = False
+                    attacks_found = []
+                    # Ghi nhận ML đã override
+                    ml_result["ml_override"] = True
+
+            elif not regex_detected and ml_result["is_attack"]:
+                # Regex không thấy, ML phát hiện → bổ sung
                 if ml_result["confidence"] >= 0.7:
                     attacks_found.append(f"{ml_result['predicted_name']} (ML)")
 

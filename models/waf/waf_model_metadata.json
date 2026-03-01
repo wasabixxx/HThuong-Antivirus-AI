@@ -26,14 +26,14 @@
     "sqli",
     "xss"
   ],
-  "train_samples": 280,
-  "test_samples": 70,
+  "train_samples": 354,
+  "test_samples": 89,
   "train_accuracy": 1.0,
-  "test_accuracy": 0.9286,
-  "cv_accuracy_mean": 0.8886,
-  "cv_accuracy_std": 0.0679,
-  "feature_count": 3165,
-  "vocabulary_size": 3165,
-  "training_time_seconds": 0.27,
-  "trained_at": "2026-03-02 02:26:25"
+  "test_accuracy": 0.9213,
+  "cv_accuracy_mean": 0.8893,
+  "cv_accuracy_std": 0.0804,
+  "feature_count": 4063,
+  "vocabulary_size": 4063,
+  "training_time_seconds": 0.31,
+  "trained_at": "2026-03-02 02:45:51"
 }

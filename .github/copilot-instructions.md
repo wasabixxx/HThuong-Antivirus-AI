@@ -25,7 +25,7 @@ HThuong-Antivirus-AI/
 │   │   ├── anomaly_engine.py   # Layer 4 — Isolation Forest anomaly detection (ML)
 │   │   ├── waf.py              # WAF — Hybrid regex + ML attack detection
 │   │   ├── ml_waf.py           # ML WAF — TF-IDF + Random Forest classifier
-│   │   ├── waf_dataset.py      # Training dataset for ML WAF (350+ payloads)
+│   │   ├── waf_dataset.py      # Training dataset for ML WAF (443 payloads)
 │   │   └── train_waf_model.py  # Training script for ML WAF model
 │   ├── api/
 │   │   └── server.py           # FastAPI REST server (all endpoints under /api/)
@@ -107,10 +107,10 @@ All file scans pass through layers **sequentially** — early exit on first dete
 ### ML WAF Engine (TF-IDF + Random Forest)
 - **File**: `src/engine/ml_waf.py`
 - **Training**: `src/engine/train_waf_model.py`
-- **Dataset**: `src/engine/waf_dataset.py` (350+ labeled payloads)
+- **Dataset**: `src/engine/waf_dataset.py` (443 labeled payloads)
 - **Pipeline**: TF-IDF character n-grams (2-5) → Random Forest (200 trees)
 - **Classes**: sqli, xss, cmdi, path_traversal, safe
-- **Accuracy**: ~93% test, ~99% on full dataset
+- **Accuracy**: ~92% test, ~98% on full dataset
 - **Integration**: Hybrid with regex WAF — ML supplements regex detection
 - **Models saved**: `models/waf/`
 

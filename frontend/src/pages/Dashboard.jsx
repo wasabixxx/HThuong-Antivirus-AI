@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, Activity, FileSearch, Globe, ShieldX } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, Activity, FileSearch, Globe, ShieldX, Brain, Cpu } from 'lucide-react';
 import { getStats, getHealth } from '../api';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -87,19 +87,19 @@ export default function Dashboard() {
       </div>
 
       {/* Engine Status */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
         <h2 className="text-lg font-semibold text-white mb-4">Engine Status</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {health && (
             <>
               <EngineCard
                 name="Hash Database"
-                detail={`${health.engines.hash_db} signatures`}
+                detail={`${health.engines.hash_db?.toLocaleString()} signatures`}
                 active={health.engines.hash_db > 0}
               />
               <EngineCard
                 name="VirusTotal API"
-                detail={health.engines.virustotal ? 'Connected' : 'Not configured'}
+                detail={health.engines.virustotal ? `Connected · Cache: ${health.vt_cache_size}` : 'Not configured'}
                 active={health.engines.virustotal}
               />
               <EngineCard
@@ -109,23 +109,87 @@ export default function Dashboard() {
               />
               <EngineCard
                 name="WAF Engine"
-                detail="SQLi · XSS · CMDi"
+                detail="SQLi · XSS · CMDi · Path Traversal"
                 active={health.engines.waf}
+              />
+              <EngineCard
+                name="ML WAF (AI)"
+                detail={health.ml_waf_info?.loaded
+                  ? `TF-IDF + Random Forest · Acc: ${(health.ml_waf_info.test_accuracy * 100).toFixed(1)}%`
+                  : 'Model not loaded'}
+                active={health.engines.ml_waf}
+                isML
+              />
+              <EngineCard
+                name="Anomaly Detection (AI)"
+                detail={health.anomaly_info?.loaded
+                  ? `Isolation Forest · ${health.anomaly_info.metadata?.trained_samples} samples`
+                  : 'Model not loaded'}
+                active={health.engines.anomaly_detection}
+                isML
               />
             </>
           )}
         </div>
       </div>
+
+      {/* ML Model Details */}
+      {health?.ml_waf_info?.loaded && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-400" />
+            AI / ML Models
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* WAF ML */}
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-purple-400 mb-3">WAF ML Classifier</h3>
+              <div className="space-y-2 text-sm">
+                <MLRow label="Model" value="TF-IDF + Random Forest" />
+                <MLRow label="Test Accuracy" value={`${(health.ml_waf_info.test_accuracy * 100).toFixed(1)}%`} />
+                <MLRow label="CV Accuracy" value={health.ml_waf_info.cv_accuracy ? `${(health.ml_waf_info.cv_accuracy * 100).toFixed(1)}%` : 'N/A'} />
+                <MLRow label="Features" value={health.ml_waf_info.feature_count?.toLocaleString()} />
+                <MLRow label="Training Samples" value={health.ml_waf_info.train_samples} />
+                <MLRow label="Classes" value={health.ml_waf_info.classes?.join(', ')} />
+                <MLRow label="Trained At" value={health.ml_waf_info.trained_at} />
+              </div>
+            </div>
+
+            {/* Anomaly Detection */}
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-purple-400 mb-3">Anomaly Detection</h3>
+              <div className="space-y-2 text-sm">
+                <MLRow label="Model" value="Isolation Forest (Unsupervised)" />
+                <MLRow label="Total Samples" value={health.anomaly_info?.metadata?.trained_samples} />
+                <MLRow label="Normal Samples" value={health.anomaly_info?.metadata?.normal_samples} />
+                <MLRow label="Contamination" value={`${(health.anomaly_info?.metadata?.contamination || 0) * 100}%`} />
+                <MLRow label="Estimators" value={health.anomaly_info?.metadata?.n_estimators} />
+                <MLRow label="Features" value={health.anomaly_info?.metadata?.features?.length || 0} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function EngineCard({ name, detail, active }) {
+function MLRow({ label, value }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-200">{value ?? '—'}</span>
+    </div>
+  );
+}
+
+function EngineCard({ name, detail, active, isML }) {
   return (
     <div className={`p-4 rounded-lg border ${active ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
       <div className="flex items-center gap-2 mb-1">
         <div className={`w-2 h-2 rounded-full ${active ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
         <span className="text-sm font-medium text-white">{name}</span>
+        {isML && <Brain className="w-3.5 h-3.5 text-purple-400 ml-auto" />}
       </div>
       <p className="text-xs text-gray-400">{detail}</p>
     </div>
