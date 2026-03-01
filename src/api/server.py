@@ -25,6 +25,8 @@ from engine.hash_engine import HashEngine
 from engine.vt_engine import VirusTotalEngine
 from engine.heuristic import HeuristicEngine
 from engine.waf import WAFEngine
+from engine.ml_waf import MLWAFEngine
+from engine.anomaly_engine import AnomalyEngine
 
 # ============================================================
 # APP SETUP
@@ -54,6 +56,8 @@ hash_engine = HashEngine("sha256")
 vt_engine = VirusTotalEngine(VT_API_KEY) if VT_API_KEY else None
 heuristic_engine = HeuristicEngine()
 waf_engine = WAFEngine()
+ml_waf_engine = MLWAFEngine()
+anomaly_engine = AnomalyEngine()
 
 # In-memory scan history
 scan_history: list[dict] = []
@@ -94,7 +98,11 @@ async def health():
             "virustotal": vt_engine is not None,
             "heuristic": True,
             "waf": True,
+            "ml_waf": ml_waf_engine.is_loaded,
+            "anomaly_detection": anomaly_engine.is_loaded,
         },
+        "ml_waf_info": ml_waf_engine.get_model_info(),
+        "anomaly_info": anomaly_engine.get_model_info(),
         "vt_cache_size": len(vt_engine.cache) if vt_engine else 0,
     }
 
@@ -111,10 +119,11 @@ async def get_stats():
 @app.post("/api/scan/file")
 async def scan_file(file: UploadFile = File(...)):
     """
-    Quét file qua 3 tầng:
+    Quét file qua 4 tầng:
       1. Hash local DB
       2. VirusTotal API
       3. Heuristic analysis
+      4. Anomaly Detection (Isolation Forest ML)
     """
     start = time.time()
 
@@ -181,20 +190,43 @@ async def scan_file(file: UploadFile = File(...)):
                 "reasons": heur_result.get("reasons", []),
                 "message": "Suspicious file detected by heuristic analysis",
             })
-        else:
-            # Get VT info even if clean
-            vt_info = result["layers"].get("virustotal", {})
-            vt_stats = vt_info.get("stats", {})
+            # Vẫn chạy anomaly để bổ sung thông tin ML
+            if anomaly_engine.is_loaded:
+                anomaly_result = anomaly_engine.check(tmp_path)
+                result["layers"]["anomaly_detection"] = anomaly_result
+            _record_scan(result, "file", start)
+            return result
 
-            result.update({
-                "detected": False,
-                "method": "all_clear",
-                "confidence": 0.0,
-                "threat_level": "safe",
-                "message": "No threats detected",
-                "vt_stats": vt_stats if vt_stats else None,
-                "vt_link": vt_info.get("vt_link"),
-            })
+        # === LAYER 4: Anomaly Detection (Isolation Forest) ===
+        if anomaly_engine.is_loaded:
+            anomaly_result = anomaly_engine.check(tmp_path)
+            result["layers"]["anomaly_detection"] = anomaly_result
+
+            if anomaly_result.get("detected"):
+                result.update({
+                    "detected": True,
+                    "method": "anomaly_detection",
+                    "confidence": anomaly_result.get("confidence", 0),
+                    "threat_level": anomaly_result.get("threat_level", "medium"),
+                    "anomaly_score": anomaly_result.get("anomaly_score"),
+                    "message": "Anomalous file detected by AI (Isolation Forest)",
+                })
+                _record_scan(result, "file", start)
+                return result
+
+        # === ALL CLEAR ===
+        vt_info = result["layers"].get("virustotal", {})
+        vt_stats = vt_info.get("stats", {})
+
+        result.update({
+            "detected": False,
+            "method": "all_clear",
+            "confidence": 0.0,
+            "threat_level": "safe",
+            "message": "No threats detected",
+            "vt_stats": vt_stats if vt_stats else None,
+            "vt_link": vt_info.get("vt_link"),
+        })
 
         _record_scan(result, "file", start)
         return result
@@ -221,12 +253,124 @@ async def scan_url(req: URLRequest):
     return result
 
 
+@app.post("/api/scan/directory")
+async def scan_directory(req: DirectoryScanRequest):
+    """
+    Quét toàn bộ file trong thư mục.
+    Chỉ dùng Layer 1 (Hash) + Layer 3 (Heuristic) + Layer 4 (Anomaly)
+    để tránh rate limit VirusTotal.
+    """
+    start = time.time()
+
+    dir_path = req.path
+    if not os.path.isdir(dir_path):
+        raise HTTPException(status_code=400, detail=f"Directory not found: {dir_path}")
+
+    results = []
+    threats_found = 0
+    files_scanned = 0
+    max_files = 200  # Giới hạn số file quét
+
+    for root, dirs, files in os.walk(dir_path):
+        for fname in files:
+            if files_scanned >= max_files:
+                break
+
+            fpath = os.path.join(root, fname)
+            try:
+                file_size = os.path.getsize(fpath)
+                if file_size == 0 or file_size > 50 * 1024 * 1024:  # Skip empty & >50MB
+                    continue
+            except OSError:
+                continue
+
+            files_scanned += 1
+            file_result = {
+                "filename": fname,
+                "path": fpath,
+                "file_size": file_size,
+            }
+
+            # Layer 1: Hash check
+            hash_result = hash_engine.check(fpath)
+            file_result["hash"] = hash_result.get("hash")
+
+            if hash_result["detected"]:
+                file_result.update({
+                    "detected": True,
+                    "method": "hash_local",
+                    "confidence": 1.0,
+                    "threat_level": "critical",
+                    "threat_name": hash_result.get("threat_name"),
+                })
+                threats_found += 1
+                results.append(file_result)
+                continue
+
+            # Layer 3: Heuristic
+            heur_result = heuristic_engine.check(fpath)
+            if heur_result["detected"]:
+                file_result.update({
+                    "detected": True,
+                    "method": "heuristic",
+                    "confidence": heur_result.get("confidence", 0),
+                    "threat_level": heur_result.get("threat_level", "medium"),
+                    "reasons": heur_result.get("reasons", []),
+                })
+                threats_found += 1
+                results.append(file_result)
+                continue
+
+            # Layer 4: Anomaly Detection
+            if anomaly_engine.is_loaded:
+                anomaly_result = anomaly_engine.check(fpath)
+                if anomaly_result.get("detected"):
+                    file_result.update({
+                        "detected": True,
+                        "method": "anomaly_detection",
+                        "confidence": anomaly_result.get("confidence", 0),
+                        "threat_level": anomaly_result.get("threat_level", "medium"),
+                        "anomaly_score": anomaly_result.get("anomaly_score"),
+                    })
+                    threats_found += 1
+                    results.append(file_result)
+                    continue
+
+            # Clean
+            file_result.update({
+                "detected": False,
+                "method": "all_clear",
+                "threat_level": "safe",
+            })
+            results.append(file_result)
+
+        if files_scanned >= max_files:
+            break
+
+    scan_time = round(time.time() - start, 3)
+
+    summary = {
+        "directory": dir_path,
+        "files_scanned": files_scanned,
+        "threats_found": threats_found,
+        "scan_time": scan_time,
+        "max_files": max_files,
+        "results": results,
+    }
+
+    stats["total_scans"] += 1
+    stats["files_scanned"] += files_scanned
+    stats["threats_detected"] += threats_found
+
+    return summary
+
+
 @app.post("/api/waf/check")
 async def waf_check(req: WAFRequest):
     """Kiểm tra payload qua WAF (SQLi, XSS, Command Injection)"""
     start = time.time()
 
-    result = waf_engine.check_all(req.payload)
+    result = waf_engine.check_all(req.payload, ml_engine=ml_waf_engine)
     result["scan_time"] = round(time.time() - start, 4)
 
     stats["waf_checks"] += 1

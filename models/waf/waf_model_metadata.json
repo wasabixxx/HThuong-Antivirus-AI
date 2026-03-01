@@ -1,0 +1,39 @@
+{
+  "model_type": "RandomForestClassifier",
+  "vectorizer_type": "TfidfVectorizer (char_wb n-grams)",
+  "tfidf_params": {
+    "analyzer": "char_wb",
+    "ngram_range": [
+      2,
+      5
+    ],
+    "max_features": 10000,
+    "sublinear_tf": true,
+    "min_df": 2
+  },
+  "rf_params": {
+    "n_estimators": 200,
+    "max_depth": 30,
+    "min_samples_split": 3,
+    "min_samples_leaf": 1,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "classes": [
+    "cmdi",
+    "path_traversal",
+    "safe",
+    "sqli",
+    "xss"
+  ],
+  "train_samples": 280,
+  "test_samples": 70,
+  "train_accuracy": 1.0,
+  "test_accuracy": 0.9286,
+  "cv_accuracy_mean": 0.8886,
+  "cv_accuracy_std": 0.0679,
+  "feature_count": 3165,
+  "vocabulary_size": 3165,
+  "training_time_seconds": 0.27,
+  "trained_at": "2026-03-02 02:26:25"
+}

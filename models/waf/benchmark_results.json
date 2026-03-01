@@ -1,0 +1,29 @@
+{
+  "Regex-only": {
+    "accuracy": 0.8457,
+    "macro_f1": 0.8515,
+    "weighted_f1": 0.8463,
+    "detection_rate": 0.8949,
+    "false_positive_rate": 0.1398,
+    "time_seconds": 0.026,
+    "payloads_per_sec": 13317.0
+  },
+  "ML-only": {
+    "accuracy": 0.9857,
+    "macro_f1": 0.985,
+    "weighted_f1": 0.9856,
+    "detection_rate": 0.9922,
+    "false_positive_rate": 0.0,
+    "time_seconds": 21.234,
+    "payloads_per_sec": 16.0
+  },
+  "Hybrid (Regex+ML)": {
+    "accuracy": 0.9057,
+    "macro_f1": 0.912,
+    "weighted_f1": 0.9078,
+    "detection_rate": 0.9767,
+    "false_positive_rate": 0.1398,
+    "time_seconds": 22.948,
+    "payloads_per_sec": 15.0
+  }
+}

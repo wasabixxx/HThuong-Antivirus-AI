@@ -128,14 +128,14 @@ class WAFEngine:
             "severity": self._severity(len(matched)),
         }
 
-    def check_all(self, payload: str) -> dict:
-        """Kiểm tra tất cả các dạng tấn công"""
+    def check_all(self, payload: str, ml_engine=None) -> dict:
+        """Kiểm tra tất cả các dạng tấn công (hybrid: regex + ML)"""
         sqli = self.check_sqli(payload)
         xss = self.check_xss(payload)
         cmdi = self.check_cmdi(payload)
         path = self.check_path_traversal(payload)
 
-        any_detected = sqli["detected"] or xss["detected"] or cmdi["detected"] or path["detected"]
+        regex_detected = sqli["detected"] or xss["detected"] or cmdi["detected"] or path["detected"]
 
         attacks_found = []
         if sqli["detected"]:
@@ -147,11 +147,30 @@ class WAFEngine:
         if path["detected"]:
             attacks_found.append("Path Traversal")
 
-        return {
+        # === ML Prediction (hybrid layer) ===
+        ml_result = None
+        if ml_engine and ml_engine.is_loaded:
+            ml_result = ml_engine.predict(payload)
+
+            # Hybrid logic:
+            # - ML bổ sung nếu regex không phát hiện
+            # - ML xác nhận nếu regex đã phát hiện
+            if ml_result["is_attack"] and not regex_detected:
+                if ml_result["confidence"] >= 0.7:
+                    attacks_found.append(f"{ml_result['predicted_name']} (ML)")
+
+        any_detected = regex_detected or (
+            ml_result is not None
+            and ml_result["is_attack"]
+            and ml_result["confidence"] >= 0.7
+        )
+
+        result = {
             "payload": payload[:200],
             "detected": any_detected,
             "action": "BLOCKED" if any_detected else "ALLOWED",
             "method": "waf",
+            "detection_method": "hybrid" if ml_result else "regex_only",
             "attacks": attacks_found,
             "details": {
                 "sqli": sqli,
@@ -160,6 +179,12 @@ class WAFEngine:
                 "path_traversal": path,
             },
         }
+
+        # Thêm ML analysis vào result
+        if ml_result:
+            result["ml_analysis"] = ml_result
+
+        return result
 
     def _severity(self, matched_count: int) -> str:
         if matched_count >= 4:

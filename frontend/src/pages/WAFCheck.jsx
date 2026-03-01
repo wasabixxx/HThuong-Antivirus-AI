@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldAlert, Send, ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
+import { ShieldAlert, Send, ShieldCheck, ShieldX, Loader2, Brain, Cpu } from 'lucide-react';
 import { checkWAF } from '../api';
 
 const EXAMPLE_PAYLOADS = [
@@ -124,6 +124,67 @@ export default function WAFCheck() {
               <AttackCard name="Cross-Site Scripting (XSS)" data={result.details.xss} />
               <AttackCard name="Command Injection" data={result.details.command_injection} />
               <AttackCard name="Path Traversal" data={result.details.path_traversal} />
+            </div>
+          )}
+
+          {/* ML Analysis */}
+          {result.ml_analysis && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="w-5 h-5 text-purple-400" />
+                <h3 className="text-sm font-semibold text-white uppercase">AI / ML Analysis</h3>
+                <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded ml-auto">
+                  {result.detection_method === 'hybrid' ? 'Hybrid (Regex + ML)' : 'Regex Only'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">ML Prediction</p>
+                  <p className={`text-lg font-bold ${result.ml_analysis.is_attack ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {result.ml_analysis.predicted_name || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">ML Confidence</p>
+                  <p className="text-lg font-bold text-white">
+                    {(result.ml_analysis.confidence * 100).toFixed(1)}%
+                  </p>
+                  <div className="mt-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${result.ml_analysis.is_attack ? 'bg-red-500' : 'bg-emerald-500'}`}
+                      style={{ width: `${result.ml_analysis.confidence * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Probability bars */}
+              {result.ml_analysis.probabilities && Object.keys(result.ml_analysis.probabilities).length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Class Probabilities</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(result.ml_analysis.probabilities)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([label, prob]) => (
+                        <div key={label} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 w-28 text-right">{label}</span>
+                          <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                label === 'safe' ? 'bg-emerald-500' :
+                                label === result.ml_analysis.predicted_label ? 'bg-red-500' : 'bg-gray-600'
+                              }`}
+                              style={{ width: `${prob * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 w-14">{(prob * 100).toFixed(1)}%</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

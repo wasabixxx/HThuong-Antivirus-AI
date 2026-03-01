@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import {
   Shield, FileSearch, Globe, ShieldAlert, History, BarChart3,
-  Menu, X
+  Menu, X, FolderSearch
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import FileScan from './pages/FileScan';
 import UrlScan from './pages/UrlScan';
 import WAFCheck from './pages/WAFCheck';
 import ScanHistory from './pages/ScanHistory';
+import DirectoryScan from './pages/DirectoryScan';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'file-scan', label: 'File Scan', icon: FileSearch },
+  { id: 'dir-scan', label: 'Directory Scan', icon: FolderSearch },
   { id: 'url-scan', label: 'URL Scan', icon: Globe },
   { id: 'waf', label: 'WAF Test', icon: ShieldAlert },
   { id: 'history', label: 'Scan History', icon: History },
@@ -25,6 +27,7 @@ export default function App() {
     switch (page) {
       case 'dashboard': return <Dashboard />;
       case 'file-scan': return <FileScan />;
+      case 'dir-scan': return <DirectoryScan />;
       case 'url-scan': return <UrlScan />;
       case 'waf': return <WAFCheck />;
       case 'history': return <ScanHistory />;

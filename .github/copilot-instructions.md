@@ -5,6 +5,7 @@
 **HThuong Antivirus AI** is an AI-powered web security platform that provides multi-layered threat detection through a modern web dashboard. It combines VirusTotal API integration with local hash-based detection, heuristic analysis, and a Web Application Firewall (WAF).
 
 - **Tên đề tài**: Tích hợp Trí Tuệ Nhân Tạo để Tăng Cường Bảo Mật trên nền Web
+- **Tên báo cáo (đầy đủ)**: Tích hợp Trí Tuệ Nhân Tạo để Tăng Cường Bảo Mật trong Ứng Dụng Di Động và Web
 
 - **Repository**: `wasabixxx/HThuong-Antivirus-AI`
 - **Language**: Vietnamese comments throughout codebase (this is intentional)
@@ -21,7 +22,11 @@ HThuong-Antivirus-AI/
 │   │   ├── hash_engine.py      # Layer 1 — Local SHA-256/MD5 hash lookup (O(1) set)
 │   │   ├── vt_engine.py        # Layer 2 — VirusTotal API v3 integration
 │   │   ├── heuristic.py        # Layer 3 — Entropy + pattern-based analysis
-│   │   └── waf.py              # WAF — SQLi, XSS, CMDi, Path Traversal detection
+│   │   ├── anomaly_engine.py   # Layer 4 — Isolation Forest anomaly detection (ML)
+│   │   ├── waf.py              # WAF — Hybrid regex + ML attack detection
+│   │   ├── ml_waf.py           # ML WAF — TF-IDF + Random Forest classifier
+│   │   ├── waf_dataset.py      # Training dataset for ML WAF (350+ payloads)
+│   │   └── train_waf_model.py  # Training script for ML WAF model
 │   ├── api/
 │   │   └── server.py           # FastAPI REST server (all endpoints under /api/)
 │   └── database/
@@ -30,14 +35,24 @@ HThuong-Antivirus-AI/
 │   └── src/
 │       ├── App.jsx             # Main layout — sidebar navigation, dark theme
 │       ├── api.js              # API client module (fetch-based, /api prefix)
-│       └── pages/              # 5 page components
+│       └── pages/              # 6 page components
 │           ├── Dashboard.jsx   # Stats overview + engine status
-│           ├── FileScan.jsx    # Drag-drop file upload → 3-layer scan
+│           ├── FileScan.jsx    # Drag-drop file upload → 4-layer scan
+│           ├── DirectoryScan.jsx # Directory path → batch scan
 │           ├── UrlScan.jsx     # URL input → VirusTotal URL analysis
-│           ├── WAFCheck.jsx    # Payload testing with example attacks
+│           ├── WAFCheck.jsx    # Payload testing with ML analysis display
 │           └── ScanHistory.jsx # Filterable scan log
-├── models/                     # ML models (reserved for future use)
-├── tests/                      # Unit tests
+├── models/                     # Trained ML models
+│   ├── waf/                    # WAF ML model (TF-IDF + Random Forest)
+│   │   ├── waf_rf_model.joblib
+│   │   ├── waf_tfidf_vectorizer.joblib
+│   │   ├── waf_model_metadata.json
+│   │   └── benchmark_results.json
+│   └── anomaly/                # Anomaly Detection model (Isolation Forest)
+│       ├── isolation_forest.joblib
+│       └── anomaly_metadata.json
+├── tests/                      # Tests & benchmarks
+│   └── benchmark_waf.py        # Regex vs ML vs Hybrid benchmark
 ├── legacy/                     # Original Fortress desktop project (DO NOT MODIFY)
 ├── .env                        # VT_API_KEY (never committed)
 └── requirements.txt            # Python dependencies
@@ -53,30 +68,65 @@ HThuong-Antivirus-AI/
 | Frontend   | React 18 · Vite 6 · TailwindCSS 3 · Recharts |
 | Icons      | lucide-react                                |
 | Detection  | VirusTotal API v3 · Local Hash DB · Heuristic |
-| WAF        | Regex-based pattern matching                |
+| ML/AI      | scikit-learn (TF-IDF + RF, Isolation Forest) |
+| WAF        | Hybrid: Regex patterns + ML classifier      |
 | Build      | pip (backend) · npm (frontend)              |
 
 ---
 
-## 3-Layer Detection Engine
+## 4-Layer Detection Engine
 
 All file scans pass through layers **sequentially** — early exit on first detection:
 
 1. **Layer 1 — Hash Local (instant, offline)**
    - `HashEngine` loads ~39,000 SHA-256 hashes into a Python `set()` for O(1) lookup.
    - Source: `.unibit` files in `src/database/HashDataBase/`.
-   - If hash matches → return immediately, skip layers 2–3.
+   - If hash matches → return immediately, skip layers 2–4.
 
 2. **Layer 2 — VirusTotal API (cloud, 70+ AV engines)**
    - `VirusTotalEngine` sends file hash to VT API v3 (does NOT upload file by default).
    - Rate limited: 15s minimum between calls (free tier = 4 req/min, 500/day).
    - Results are cached in-memory by SHA-256 hash.
-   - If detected → return immediately, skip layer 3.
+   - If detected → return immediately, skip layers 3–4.
 
 3. **Layer 3 — Heuristic (offline fallback)**
    - `HeuristicEngine` calculates Shannon entropy, scans for suspicious patterns (22 malware patterns + 11 network patterns), and checks PE headers.
    - Score-based: threshold = 50 for detection.
    - Used when VT returns clean or is unavailable.
+
+4. **Layer 4 — Anomaly Detection (ML, offline)**
+   - `AnomalyEngine` uses **Isolation Forest** (unsupervised ML) to detect anomalous files.
+   - Extracts 8 features: entropy, file_size, suspicious_patterns, network_patterns, is_pe, null_byte_ratio, printable_ratio, unique_bytes.
+   - Pre-trained baseline model (525 samples). No labeled malware data needed.
+   - Acts as final safety net when all other layers return clean.
+
+---
+
+## ML/AI Components
+
+### ML WAF Engine (TF-IDF + Random Forest)
+- **File**: `src/engine/ml_waf.py`
+- **Training**: `src/engine/train_waf_model.py`
+- **Dataset**: `src/engine/waf_dataset.py` (350+ labeled payloads)
+- **Pipeline**: TF-IDF character n-grams (2-5) → Random Forest (200 trees)
+- **Classes**: sqli, xss, cmdi, path_traversal, safe
+- **Accuracy**: ~93% test, ~99% on full dataset
+- **Integration**: Hybrid with regex WAF — ML supplements regex detection
+- **Models saved**: `models/waf/`
+
+### Anomaly Detection Engine (Isolation Forest)
+- **File**: `src/engine/anomaly_engine.py`
+- **Approach**: Unsupervised — learns "normal" file profile, flags outliers
+- **Features**: 8 numeric features extracted from binary file content
+- **Contamination**: 5% (assumes ~5% anomaly rate)
+- **Auto-trains** baseline on first run if no saved model exists
+- **Models saved**: `models/anomaly/`
+
+### Benchmark
+- **File**: `tests/benchmark_waf.py`
+- **Compares**: Regex-only vs ML-only vs Hybrid WAF
+- **Output**: accuracy, precision, recall, F1, confusion matrix, detection rate
+- **Results saved**: `models/waf/benchmark_results.json`
 
 ---
 
@@ -84,15 +134,16 @@ All file scans pass through layers **sequentially** — early exit on first dete
 
 All routes are prefixed with `/api/`:
 
-| Method   | Endpoint          | Purpose                                |
-| -------- | ----------------- | -------------------------------------- |
-| `GET`    | `/api/health`     | Engine status, hash DB size, VT status |
-| `GET`    | `/api/stats`      | Scan statistics since server start     |
-| `POST`   | `/api/scan/file`  | Upload file → 3-layer scan            |
-| `POST`   | `/api/scan/url`   | URL → VirusTotal URL analysis          |
-| `POST`   | `/api/waf/check`  | Test payload for SQLi/XSS/CMDi        |
-| `GET`    | `/api/history`    | Get scan history (newest first)        |
-| `DELETE` | `/api/history`    | Clear scan history                     |
+| Method   | Endpoint             | Purpose                                |
+| -------- | -------------------- | -------------------------------------- |
+| `GET`    | `/api/health`        | Engine status, hash DB size, ML info   |
+| `GET`    | `/api/stats`         | Scan statistics since server start     |
+| `POST`   | `/api/scan/file`     | Upload file → 4-layer scan            |
+| `POST`   | `/api/scan/url`      | URL → VirusTotal URL analysis          |
+| `POST`   | `/api/scan/directory` | Directory path → batch file scan      |
+| `POST`   | `/api/waf/check`     | Test payload (hybrid regex + ML)       |
+| `GET`    | `/api/history`       | Get scan history (newest first)        |
+| `DELETE` | `/api/history`       | Clear scan history                     |
 
 - Interactive API docs: `http://localhost:8000/docs`
 - Scan history is in-memory (max 500 records, FIFO eviction).
@@ -110,7 +161,7 @@ All routes are prefixed with `/api/`:
   ```python
   {
       "detected": bool,        # Was a threat found?
-      "method": str,           # "hash_local" | "virustotal" | "heuristic" | "waf"
+      "method": str,           # "hash_local" | "virustotal" | "heuristic" | "anomaly_detection" | "waf"
       "confidence": float,     # 0.0–1.0
       "threat_level": str,     # "safe" | "low" | "medium" | "high" | "critical"
       "details": dict | None,  # Engine-specific details
@@ -252,6 +303,8 @@ When adding new WAF patterns:
 | python-dotenv      | Load `.env` environment vars     |
 | python-multipart   | File upload support for FastAPI  |
 | numpy              | Numerical operations (heuristic) |
+| scikit-learn       | ML models (RF, Isolation Forest, TF-IDF) |
+| joblib             | Model serialization              |
 
 ### Node.js (`frontend/package.json`)
 
@@ -263,3 +316,18 @@ When adding new WAF patterns:
 | tailwindcss        | Utility-first CSS                |
 | vite               | Build tool + dev server          |
 | @vitejs/plugin-react | React fast refresh             |
+
+---
+
+## IMPORTANT — Keep This File Updated
+
+**Copilot must update this `copilot-instructions.md` file whenever there are significant changes to the project**, including but not limited to:
+
+- Adding new engines, API endpoints, or frontend pages
+- Changing the architecture or file structure
+- Adding new dependencies (Python or Node.js)
+- Modifying coding conventions or design decisions
+- Adding new WAF patterns or detection layers
+- Any change that would affect how Copilot should assist with this project
+
+This ensures Copilot always has accurate context about the current state of the project.

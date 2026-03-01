@@ -49,3 +49,13 @@ export async function getHistory(limit = 50) {
   if (!resp.ok) throw new Error(`History failed: ${resp.status}`);
   return resp.json();
 }
+
+export async function scanDirectory(path) {
+  const resp = await fetch(`${API_BASE}/scan/directory`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  if (!resp.ok) throw new Error(`Directory scan failed: ${resp.status}`);
+  return resp.json();
+}

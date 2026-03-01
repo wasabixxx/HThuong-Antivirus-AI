@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2 } from 'lucide-react';
+import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2, Brain } from 'lucide-react';
 import { scanFile } from '../api';
 
 export default function FileScan() {
@@ -51,7 +51,7 @@ export default function FileScan() {
         <FileSearch className="w-8 h-8 text-emerald-400" />
         File Scan
       </h1>
-      <p className="text-gray-400 mb-8">Upload file to scan through 3-layer AI detection engine</p>
+      <p className="text-gray-400 mb-8">Upload file to scan through 4-layer AI detection engine</p>
 
       {/* Upload Zone */}
       <div
@@ -67,8 +67,8 @@ export default function FileScan() {
         {loading ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
-            <p className="text-emerald-400 font-medium">Scanning... Checking 3 layers</p>
-            <p className="text-gray-500 text-sm">Layer 1: Hash DB → Layer 2: VirusTotal (70+ engines) → Layer 3: Heuristic</p>
+            <p className="text-emerald-400 font-medium">Scanning... Checking 4 layers</p>
+            <p className="text-gray-500 text-sm">Layer 1: Hash DB → Layer 2: VirusTotal → Layer 3: Heuristic → Layer 4: AI Anomaly</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
@@ -191,6 +191,34 @@ export default function FileScan() {
                 {result.layers.heuristic && (
                   <LayerRow name="Layer 3: Heuristic" result={result.layers.heuristic} />
                 )}
+                {result.layers.anomaly_detection && (
+                  <LayerRow name="Layer 4: AI Anomaly Detection" result={result.layers.anomaly_detection} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Anomaly Detection Details */}
+          {result.layers?.anomaly_detection?.features && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-5 h-5 text-purple-400" />
+                <h3 className="text-sm font-semibold text-white uppercase">AI Anomaly Analysis (Isolation Forest)</h3>
+                <span className={`text-xs px-2 py-0.5 rounded ml-auto ${result.layers.anomaly_detection.detected ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  {result.layers.anomaly_detection.prediction?.toUpperCase()}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <FeatureCard label="Entropy" value={result.layers.anomaly_detection.features.entropy?.toFixed(2)} warn={result.layers.anomaly_detection.features.entropy > 7.0} />
+                <FeatureCard label="Suspicious Patterns" value={result.layers.anomaly_detection.features.suspicious_patterns} warn={result.layers.anomaly_detection.features.suspicious_patterns > 3} />
+                <FeatureCard label="Network Patterns" value={result.layers.anomaly_detection.features.network_patterns} warn={result.layers.anomaly_detection.features.network_patterns > 3} />
+                <FeatureCard label="Anomaly Score" value={result.layers.anomaly_detection.anomaly_score?.toFixed(3)} warn={result.layers.anomaly_detection.anomaly_score < 0} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FeatureCard label="Is PE" value={result.layers.anomaly_detection.features.is_pe ? 'Yes' : 'No'} />
+                <FeatureCard label="Null Byte Ratio" value={(result.layers.anomaly_detection.features.null_byte_ratio * 100).toFixed(1) + '%'} />
+                <FeatureCard label="Printable Ratio" value={(result.layers.anomaly_detection.features.printable_ratio * 100).toFixed(1) + '%'} />
+                <FeatureCard label="Unique Bytes" value={result.layers.anomaly_detection.features.unique_bytes} />
               </div>
             </div>
           )}
@@ -248,6 +276,15 @@ function LayerRow({ name, result }) {
       }`}>
         {detected ? 'DETECTED' : result.error ? 'ERROR' : result.message === 'Not found in VirusTotal database' ? 'NOT IN DB' : 'CLEAN'}
       </span>
+    </div>
+  );
+}
+
+function FeatureCard({ label, value, warn }) {
+  return (
+    <div className={`bg-gray-800 rounded-lg p-2.5 ${warn ? 'ring-1 ring-amber-500/30' : ''}`}>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className={`text-sm font-semibold ${warn ? 'text-amber-400' : 'text-gray-200'}`}>{value}</p>
     </div>
   );
 }

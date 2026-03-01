@@ -1,0 +1,18 @@
+{
+  "model_type": "IsolationForest",
+  "trained_samples": 525,
+  "normal_samples": 500,
+  "anomaly_samples": 25,
+  "contamination": 0.05,
+  "n_estimators": 150,
+  "features": [
+    "entropy",
+    "file_size",
+    "suspicious_patterns",
+    "network_patterns",
+    "is_pe",
+    "null_byte_ratio",
+    "printable_ratio",
+    "unique_bytes"
+  ]
+}
