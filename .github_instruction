@@ -1,0 +1,71 @@
+# GitHub Copilot Instructions for HThuong Antivirus AI
+
+## Project Overview
+This is an AI-powered web security application called **HThuong Antivirus AI**. It integrates VirusTotal API with local hash-based detection and heuristic analysis to provide multi-layered threat detection through a modern web interface.
+
+## Architecture
+
+### Backend (Python/FastAPI)
+- **src/engine/vt_engine.py** — VirusTotal API integration, main scanning engine
+- **src/engine/hash_engine.py** — Local SHA-256/MD5 hash database lookup
+- **src/engine/heuristic.py** — Entropy analysis, suspicious pattern detection
+- **src/engine/waf.py** — Web Application Firewall (SQLi, XSS detection)
+- **src/api/server.py** — FastAPI REST API server
+
+### Frontend (React + TailwindCSS)
+- **frontend/** — React 18 dashboard with file upload, URL scanning, WAF testing, scan history
+
+### Database
+- **src/database/** — Local virus hash databases (.unibit files)
+- In-memory cache for VirusTotal results to save API quota
+
+## Key Design Decisions
+
+### 3-Layer Detection Engine
+1. **Layer 1 — Hash Lookup (instant, offline):** Compare SHA-256 hash against local database. O(1) using Python `set()`.
+2. **Layer 2 — VirusTotal API:** Send hash to VT for checking against 70+ AV engines. Rate limited (4 req/min free tier).
+3. **Layer 3 — Heuristic (offline fallback):** Entropy calculation, suspicious string patterns, PE header analysis.
+
+### API Rate Limiting
+- VirusTotal free tier: 4 requests/minute, 500/day
+- Always cache results by SHA-256 hash
+- Layer 1 (local) runs first to avoid unnecessary API calls
+- Add 15s delay between VT API calls
+
+### Security
+- API key stored in `.env` file (never committed)
+- File uploads are temporary (deleted after scan)
+- No user data persistence
+
+## Code Style
+- Python: PEP 8, type hints preferred
+- React: Functional components with hooks
+- Use `async/await` for all API calls
+- All scan results return a standardized dict: `{detected, method, confidence, threat_level, details}`
+
+## Common Tasks
+
+### Adding a new detection engine
+1. Create class in `src/engine/` with a `check(file_path) -> dict` method
+2. Register it in `FortressEngine` class in `vt_engine.py`
+3. Add API endpoint in `src/api/server.py`
+4. Add frontend component for the new feature
+
+### Adding a new API endpoint
+1. Add route in `src/api/server.py`
+2. Add corresponding frontend API call in `frontend/src/api.js`
+3. Create React component for the UI
+
+## Environment Variables
+```
+VT_API_KEY=<VirusTotal API key>
+```
+
+## Dependencies
+- Backend: fastapi, uvicorn, requests, numpy, python-dotenv, python-multipart
+- Frontend: react, tailwindcss, recharts, lucide-react
+
+## Testing
+- Run backend: `cd src/api && uvicorn server:app --reload --port 8000`
+- Run frontend: `cd frontend && npm run dev`
+- API docs: http://localhost:8000/docs
