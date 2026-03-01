@@ -4,6 +4,8 @@
 
 **HThuong Antivirus AI** is an AI-powered web security platform that provides multi-layered threat detection through a modern web dashboard. It combines VirusTotal API integration with local hash-based detection, heuristic analysis, and a Web Application Firewall (WAF).
 
+- **Tên đề tài**: Tích hợp Trí Tuệ Nhân Tạo để Tăng Cường Bảo Mật trên nền Web
+
 - **Repository**: `wasabixxx/HThuong-Antivirus-AI`
 - **Language**: Vietnamese comments throughout codebase (this is intentional)
 - **Status**: Active development — academic/thesis project
