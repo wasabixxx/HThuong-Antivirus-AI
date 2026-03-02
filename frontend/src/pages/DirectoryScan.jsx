@@ -1,12 +1,43 @@
-import { useState } from 'react';
-import { FolderSearch, Send, ShieldCheck, ShieldAlert, Loader2, Brain, FileWarning } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FolderSearch, Send, ShieldCheck, ShieldAlert, Loader2, Brain, FileWarning, CheckCircle2, Circle, HardDrive, Search, Cpu } from 'lucide-react';
 import { scanDirectory } from '../api';
+
+const SCAN_PHASES = [
+  { id: 'connect', name: 'Connecting', desc: 'Validating directory path...', time: 400 },
+  { id: 'enumerate', name: 'Enumerating files', desc: 'Walking directory tree (max 200 files)', time: 800 },
+  { id: 'hash', name: 'Hash DB Check', desc: 'SHA-256 lookup in ~39,000 signatures', time: 1500 },
+  { id: 'heuristic', name: 'Heuristic Analysis', desc: 'Entropy + pattern + PE header analysis', time: 2000 },
+  { id: 'anomaly', name: 'AI Anomaly Detection', desc: 'Isolation Forest ML model analysis', time: 3000 },
+  { id: 'report', name: 'Generating Report', desc: 'Compiling results...', time: 500 },
+];
 
 export default function DirectoryScan() {
   const [dirPath, setDirPath] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activePhase, setActivePhase] = useState(-1);
+  const timerRef = useRef(null);
+
+  // Animate through phases during scan
+  useEffect(() => {
+    if (loading) {
+      setActivePhase(0);
+      let phase = 0;
+      const advancePhase = () => {
+        phase++;
+        if (phase < SCAN_PHASES.length) {
+          setActivePhase(phase);
+          timerRef.current = setTimeout(advancePhase, SCAN_PHASES[phase].time);
+        }
+      };
+      timerRef.current = setTimeout(advancePhase, SCAN_PHASES[0].time);
+    } else {
+      setActivePhase(-1);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [loading]);
 
   async function handleScan(e) {
     e.preventDefault();
@@ -64,6 +95,51 @@ export default function DirectoryScan() {
           </button>
         </div>
       </form>
+
+      {/* Scan Progress */}
+      {loading && (
+        <div className="mb-6 bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+            <p className="text-emerald-400 font-medium">Scanning directory...</p>
+          </div>
+          <div className="space-y-2">
+            {SCAN_PHASES.map((phase, idx) => {
+              const isDone = idx < activePhase;
+              const isActive = idx === activePhase;
+              return (
+                <div key={phase.id}
+                  className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all duration-300 ${
+                    isActive ? 'bg-emerald-500/15 border border-emerald-500/30' :
+                    isDone ? 'bg-gray-800/50 opacity-60' : 'bg-gray-800/30 opacity-40'
+                  }`}
+                >
+                  {isDone ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  ) : isActive ? (
+                    <Loader2 className="w-4 h-4 text-emerald-400 animate-spin flex-shrink-0" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium ${isActive ? 'text-emerald-300' : isDone ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {phase.name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{phase.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Progress bar */}
+          <div className="mt-4 w-full bg-gray-800 rounded-full h-1.5">
+            <div
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(5, ((activePhase + 1) / SCAN_PHASES.length) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

@@ -19,16 +19,16 @@
 HThuong-Antivirus-AI/
 ├── src/
 │   ├── engine/                 # Core detection engines (Python)
-│   │   ├── hash_engine.py      # Layer 1 — Local SHA-256/MD5 hash lookup (O(1) set)
+│   │   ├── hash_engine.py      # Layer 1 — Local SHA-256/MD5 hash lookup (O(1) set) + EICAR
 │   │   ├── vt_engine.py        # Layer 2 — VirusTotal API v3 integration
 │   │   ├── heuristic.py        # Layer 3 — Entropy + pattern-based analysis
 │   │   ├── anomaly_engine.py   # Layer 4 — Isolation Forest anomaly detection (ML)
-│   │   ├── waf.py              # WAF — Hybrid regex + ML attack detection
+│   │   ├── waf.py              # WAF — Hybrid regex + ML + URL-decode preprocessing
 │   │   ├── ml_waf.py           # ML WAF — TF-IDF + Random Forest classifier
 │   │   ├── waf_dataset.py      # Training dataset for ML WAF (443 payloads)
 │   │   └── train_waf_model.py  # Training script for ML WAF model
 │   ├── api/
-│   │   └── server.py           # FastAPI REST server (all endpoints under /api/)
+│   │   └── server.py           # FastAPI REST server + serves frontend static files
 │   └── database/
 │       └── HashDataBase/       # Local virus hash databases (.unibit files)
 ├── frontend/                   # React 18 SPA (Vite + TailwindCSS)
@@ -37,7 +37,7 @@ HThuong-Antivirus-AI/
 │       ├── api.js              # API client module (fetch-based, /api prefix)
 │       └── pages/              # 6 page components
 │           ├── Dashboard.jsx   # Stats + Recharts (Pie, Bar, Area) + engine status
-│           ├── FileScan.jsx    # Drag-drop upload → 4-layer scan + progress animation
+│           ├── FileScan.jsx    # Drag-drop upload → 4-layer scan + progress animation + EICAR test
 │           ├── DirectoryScan.jsx # Directory path → batch scan
 │           ├── UrlScan.jsx     # URL input → VirusTotal URL analysis
 │           ├── WAFCheck.jsx    # Payload testing with ML analysis display
@@ -52,7 +52,7 @@ HThuong-Antivirus-AI/
 │       ├── isolation_forest.joblib
 │       └── anomaly_metadata.json
 ├── tests/                      # Tests & benchmarks
-│   ├── test_engines.py         # Unit tests — 45 tests for all 5 engines (pytest)
+│   ├── test_engines.py         # Unit tests — 53 tests for all engines (pytest)
 │   └── benchmark_waf.py        # Regex vs ML vs Hybrid benchmark
 ├── legacy/                     # Original Fortress desktop project (DO NOT MODIFY)
 ├── .env                        # VT_API_KEY (never committed)
@@ -70,8 +70,8 @@ HThuong-Antivirus-AI/
 | Icons      | lucide-react                                |
 | Detection  | VirusTotal API v3 · Local Hash DB · Heuristic |
 | ML/AI      | scikit-learn (TF-IDF + RF, Isolation Forest) |
-| WAF        | Hybrid: Regex patterns + ML classifier      |
-| Testing    | pytest (45 unit tests across all engines)   |
+| WAF        | Hybrid: Regex + URL-decode + ML classifier  |
+| Testing    | pytest (53 unit tests across all engines)   |
 | Build      | pip (backend) · npm (frontend)              |
 
 ---
@@ -82,6 +82,7 @@ All file scans pass through layers **sequentially** — early exit on first dete
 
 1. **Layer 1 — Hash Local (instant, offline)**
    - `HashEngine` loads ~39,000 SHA-256 hashes into a Python `set()` for O(1) lookup.
+   - Includes EICAR standard test file hash for demo/testing.
    - Source: `.unibit` files in `src/database/HashDataBase/`.
    - If hash matches → return immediately, skip layers 2–4.
 
@@ -113,7 +114,7 @@ All file scans pass through layers **sequentially** — early exit on first dete
 - **Pipeline**: TF-IDF character n-grams (2-5) → Random Forest (200 trees)
 - **Classes**: sqli, xss, cmdi, path_traversal, safe
 - **Accuracy**: ~92% test, ~98% on full dataset
-- **Integration**: Hybrid with regex WAF — ML supplements regex detection
+- **Integration**: Hybrid with regex WAF — ML supplements regex detection + overrides classification
 - **Models saved**: `models/waf/`
 
 ### Anomaly Detection Engine (Isolation Forest)
@@ -129,6 +130,7 @@ All file scans pass through layers **sequentially** — early exit on first dete
 - **Compares**: Regex-only vs ML-only vs Hybrid WAF
 - **Output**: accuracy, precision, recall, F1, confusion matrix, detection rate
 - **Results saved**: `models/waf/benchmark_results.json`
+- **Latest results**: Regex 80.8% | ML 98.4% | Hybrid 97.1% accuracy, FPR 0.93%
 
 ---
 
@@ -146,6 +148,7 @@ All routes are prefixed with `/api/`:
 | `POST`   | `/api/waf/check`     | Test payload (hybrid regex + ML)       |
 | `GET`    | `/api/history`       | Get scan history (newest first)        |
 | `DELETE` | `/api/history`       | Clear scan history                     |
+| `GET`    | `/api/eicar`         | Download EICAR test file (base64)      |
 
 - Interactive API docs: `http://localhost:8000/docs`
 - Scan history is in-memory (max 500 records, FIFO eviction).
@@ -208,7 +211,7 @@ cd src/api
 uvicorn server:app --reload --port 8000
 ```
 
-### Frontend
+### Frontend (Development)
 
 ```bash
 cd frontend
@@ -217,6 +220,17 @@ npm run dev       # Vite dev server on http://localhost:5173
 ```
 
 - Vite proxies `/api` requests to `http://localhost:8000` (configured in `vite.config.js`).
+
+### Single-server deployment
+
+```bash
+cd frontend && npm run build && cd ..
+cd src/api
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+- FastAPI auto-detects `frontend/dist/` and serves the built SPA.
+- Both API and UI available at `http://localhost:8000`.
 
 ---
 
@@ -266,7 +280,10 @@ npm run dev       # Vite dev server on http://localhost:5173
 
 ## WAF Engine Patterns
 
-The WAF detects 4 categories of web attacks via regex:
+The WAF detects 4 categories of web attacks via regex, with automatic **URL-decode + HTML entity decode** preprocessing:
+
+- **Preprocessing**: `_normalize_payload()` applies double URL-decode (`%2e` → `.`, `%252e` → `.`), HTML entity decode (`&lt;` → `<`), and null byte removal before regex matching.
+- Both the original and normalized payload are checked against all patterns.
 
 | Category           | Pattern count | Examples                              |
 | ------------------ | ------------- | ------------------------------------- |

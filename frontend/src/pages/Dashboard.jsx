@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, Activity, FileSearch, Globe, ShieldX, Brain, Cpu } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, Activity, FileSearch, Globe, ShieldX, Brain, Cpu, Database, Layers, FlaskConical } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend } from 'recharts';
 import { getStats, getHealth } from '../api';
 
@@ -331,7 +331,7 @@ export default function Dashboard() {
 
       {/* ML Model Details */}
       {health?.ml_waf_info?.loaded && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-400" />
             AI / ML Models
@@ -361,6 +361,70 @@ export default function Dashboard() {
                 <MLRow label="Contamination" value={`${(health.anomaly_info?.metadata?.contamination || 0) * 100}%`} />
                 <MLRow label="Estimators" value={health.anomaly_info?.metadata?.n_estimators} />
                 <MLRow label="Features" value={health.anomaly_info?.metadata?.features?.length || 0} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Benchmark Results */}
+      {health?.benchmark && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <FlaskConical className="w-5 h-5 text-amber-400" />
+            WAF Benchmark Results
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.entries(health.benchmark).map(([method, data]) => (
+              <div key={method} className="bg-gray-800 rounded-lg p-4">
+                <h3 className={`text-sm font-semibold mb-3 ${
+                  method.includes('Hybrid') ? 'text-emerald-400' :
+                  method.includes('ML') ? 'text-purple-400' : 'text-blue-400'
+                }`}>{method}</h3>
+                <div className="space-y-2 text-sm">
+                  <MLRow label="Accuracy" value={`${(data.accuracy * 100).toFixed(1)}%`} />
+                  <MLRow label="Macro F1" value={`${(data.macro_f1 * 100).toFixed(1)}%`} />
+                  <MLRow label="Detection Rate" value={`${(data.detection_rate * 100).toFixed(1)}%`} />
+                  <MLRow label="False Positive" value={`${(data.false_positive_rate * 100).toFixed(2)}%`} />
+                  <MLRow label="Speed" value={`${data.speed_payloads_per_sec?.toFixed(0)} req/s`} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-3">
+            Dataset: {health.benchmark?.['Hybrid (Regex+ML)']?.total_samples || 443} payloads •
+            Benchmark runs on full dataset
+          </p>
+        </div>
+      )}
+
+      {/* Architecture Info */}
+      {health?.architecture && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Layers className="w-5 h-5 text-cyan-400" />
+            System Architecture
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-cyan-400 mb-3">Detection Layers</h3>
+              <div className="space-y-2 text-sm">
+                <MLRow label="Total Layers" value={health.architecture.detection_layers} />
+                <MLRow label="Layer 1" value="Hash DB (SHA-256, O(1))" />
+                <MLRow label="Layer 2" value="VirusTotal API (70+ AV)" />
+                <MLRow label="Layer 3" value="Heuristic (Entropy + PE)" />
+                <MLRow label="Layer 4" value="Isolation Forest (ML)" />
+              </div>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-cyan-400 mb-3">WAF Details</h3>
+              <div className="space-y-2 text-sm">
+                <MLRow label="Total Patterns" value={health.architecture.waf_patterns.total} />
+                <MLRow label="SQLi Patterns" value={health.architecture.waf_patterns.sqli} />
+                <MLRow label="XSS Patterns" value={health.architecture.waf_patterns.xss} />
+                <MLRow label="CMDi Patterns" value={health.architecture.waf_patterns.cmdi} />
+                <MLRow label="Path Traversal" value={health.architecture.waf_patterns.path_traversal} />
+                <MLRow label="Preprocessing" value={health.architecture.preprocessing?.join(', ')} />
               </div>
             </div>
           </div>

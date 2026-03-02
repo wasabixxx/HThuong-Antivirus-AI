@@ -65,3 +65,14 @@ export async function clearHistory() {
   if (!resp.ok) throw new Error(`Clear history failed: ${resp.status}`);
   return resp.json();
 }
+
+export async function downloadEicar() {
+  const resp = await fetch(`${API_BASE}/eicar`);
+  if (!resp.ok) throw new Error(`EICAR download failed: ${resp.status}`);
+  const data = await resp.json();
+  // Decode base64 → binary blob
+  const binary = atob(data.eicar_base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: 'application/octet-stream' });
+}

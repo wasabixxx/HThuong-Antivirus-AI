@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2, Brain, CheckCircle2, Circle } from 'lucide-react';
-import { scanFile } from '../api';
+import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2, Brain, CheckCircle2, Circle, TestTube2 } from 'lucide-react';
+import { scanFile, downloadEicar } from '../api';
 
 const SCAN_LAYERS = [
   { id: 'hash', name: 'Layer 1: Local Hash DB', desc: 'SHA-256 lookup in ~39,000 signatures', time: 300 },
@@ -134,6 +134,27 @@ export default function FileScan() {
             <p className="text-gray-500 text-sm">Supports any file type • Max 32MB for VirusTotal</p>
           </div>
         )}
+      </div>
+
+      {/* EICAR Test Button */}
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={async () => {
+            try {
+              const blob = await downloadEicar();
+              const file = new File([blob], 'eicar_test_file.txt', { type: 'application/octet-stream' });
+              handleScan(file);
+            } catch (e) {
+              setError('Failed to download EICAR test file: ' + e.message);
+            }
+          }}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors text-sm disabled:opacity-50"
+        >
+          <TestTube2 className="w-4 h-4" />
+          Test with EICAR File
+        </button>
+        <span className="text-gray-500 text-xs">Standard antivirus test file — NOT a real virus</span>
       </div>
 
       {/* Error */}

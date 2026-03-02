@@ -51,28 +51,41 @@ def ml_predict(ml_engine: MLWAFEngine, payload: str) -> str:
 
 
 def hybrid_predict(waf: WAFEngine, ml_engine: MLWAFEngine, payload: str) -> str:
-    """Dự đoán hybrid: regex + ML"""
+    """Dự đoán hybrid: regex + ML.
+    Khi cả regex và ML đều phát hiện attack → dùng ML classification
+    vì ML chính xác hơn (~98%) ở việc phân loại TYPE tấn công.
+    """
     result = waf.check_all(payload, ml_engine=ml_engine)
 
     if not result["detected"]:
         return "safe"
 
-    # Nếu regex phát hiện, dùng regex label
-    regex_attacks = []
-    if result["details"]["sqli"]["detected"]:
-        regex_attacks.append("sqli")
-    if result["details"]["xss"]["detected"]:
-        regex_attacks.append("xss")
-    if result["details"]["command_injection"]["detected"]:
-        regex_attacks.append("cmdi")
-    if result["details"]["path_traversal"]["detected"]:
-        regex_attacks.append("path_traversal")
-
-    if regex_attacks:
-        return regex_attacks[0]
-
-    # Nếu chỉ ML phát hiện, dùng ML label
     ml_result = result.get("ml_analysis", {})
+
+    # Kiểm tra regex có phát hiện không
+    regex_detected = any([
+        result["details"]["sqli"]["detected"],
+        result["details"]["xss"]["detected"],
+        result["details"]["command_injection"]["detected"],
+        result["details"]["path_traversal"]["detected"],
+    ])
+
+    # Khi cả regex + ML đồng ý attack → tin ML classification (chính xác hơn)
+    if regex_detected and ml_result.get("is_attack"):
+        return ml_result.get("predicted_label", "safe")
+
+    # Chỉ regex phát hiện (ML bị override vì ko đủ confident) → dùng regex
+    if regex_detected:
+        if result["details"]["sqli"]["detected"]:
+            return "sqli"
+        if result["details"]["xss"]["detected"]:
+            return "xss"
+        if result["details"]["command_injection"]["detected"]:
+            return "cmdi"
+        if result["details"]["path_traversal"]["detected"]:
+            return "path_traversal"
+
+    # Chỉ ML phát hiện → dùng ML label
     if ml_result.get("is_attack"):
         return ml_result.get("predicted_label", "safe")
 

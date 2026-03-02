@@ -12,6 +12,7 @@ from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -61,6 +62,19 @@ anomaly_engine = AnomalyEngine()
 
 # In-memory scan history
 scan_history: list[dict] = []
+
+
+def _load_benchmark_results() -> dict | None:
+    """Load benchmark results từ file JSON (nếu có)"""
+    bench_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "waf", "benchmark_results.json")
+    try:
+        if os.path.exists(bench_path):
+            import json
+            with open(bench_path, "r") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
 stats = {
     "total_scans": 0,
     "threats_detected": 0,
@@ -104,6 +118,36 @@ async def health():
         "ml_waf_info": ml_waf_engine.get_model_info(),
         "anomaly_info": anomaly_engine.get_model_info(),
         "vt_cache_size": len(vt_engine.cache) if vt_engine else 0,
+        "benchmark": _load_benchmark_results(),
+        "architecture": {
+            "detection_layers": 4,
+            "waf_patterns": {
+                "sqli": len(waf_engine.SQLI_PATTERNS),
+                "xss": len(waf_engine.XSS_PATTERNS),
+                "cmdi": len(waf_engine.CMDI_PATTERNS),
+                "path_traversal": len(waf_engine.PATH_TRAVERSAL_PATTERNS),
+                "total": len(waf_engine.SQLI_PATTERNS) + len(waf_engine.XSS_PATTERNS) + len(waf_engine.CMDI_PATTERNS) + len(waf_engine.PATH_TRAVERSAL_PATTERNS),
+            },
+            "preprocessing": ["URL-decode (double)", "HTML entity decode", "Null byte removal"],
+        },
+    }
+
+
+@app.get("/api/eicar")
+async def get_eicar():
+    """
+    Tải EICAR standard test file — dùng để demo/test scan engine.
+    Trả về base64 để tránh bị AV chặn trên đường truyền.
+    Frontend sẽ decode và tạo file ở client.
+    """
+    import base64
+    from engine.hash_engine import HashEngine
+    encoded = base64.b64encode(HashEngine.EICAR_STRING).decode("ascii")
+    return {
+        "eicar_base64": encoded,
+        "filename": "eicar_test_file.txt",
+        "description": "EICAR Standard Anti-Virus Test File (NOT a real virus)",
+        "sha256": HashEngine.EICAR_SHA256,
     }
 
 
@@ -479,6 +523,35 @@ def _record_scan(result: dict, scan_type: str, start: float):
 
 
 # ============================================================
+# SERVE FRONTEND (static files from React build)
+# ============================================================
+
+_frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+
+if os.path.isdir(_frontend_dist):
+    from fastapi.responses import FileResponse
+
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=os.path.join(_frontend_dist, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """
+        SPA catch-all route — trả về index.html cho tất cả non-API routes.
+        React Router sẽ handle routing phía client.
+        """
+        # Kiểm tra file static tồn tại (favicon, manifest, v.v.)
+        file_path = os.path.join(_frontend_dist, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(_frontend_dist, "index.html"))
+
+    print(f"[Server] Serving frontend from {_frontend_dist}")
+else:
+    print(f"[Server] Frontend dist not found at {_frontend_dist} — run 'npm run build' in frontend/")
+
+
+# ============================================================
 # RUN
 # ============================================================
 
@@ -491,5 +564,6 @@ if __name__ == "__main__":
     print(f"  VirusTotal: {'Connected' if vt_engine else 'Not configured'}")
     print(f"  Heuristic: Active")
     print(f"  WAF: Active")
+    print(f"  Frontend: {'Served from dist/' if os.path.isdir(_frontend_dist) else 'Not built'}")
     print("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=8000)

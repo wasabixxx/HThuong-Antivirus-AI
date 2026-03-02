@@ -11,13 +11,21 @@ class HashEngine:
     """
     Phát hiện malware dựa trên SHA-256/MD5 hash signature.
     Lookup O(1) bằng Python set().
+    Tích hợp EICAR test file hash cho demo/testing.
     """
+
+    # EICAR Standard Anti-Virus Test File
+    # https://www.eicar.org/download-anti-malware-testfile/
+    EICAR_STRING = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+    EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+    EICAR_MD5 = "44d88612fea8a8f36de82e1278abb02f"
 
     def __init__(self, hash_type: str = "sha256"):
         self.hash_type = hash_type.lower()
         self.hash_set: set = set()
         self.info_map: dict = {}
         self._load_database()
+        self._add_eicar()
 
     def _load_database(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +57,15 @@ class HashEngine:
                     self.info_map[h] = infos[i]
 
         print(f"[HashEngine] Loaded {len(self.hash_set)} {self.hash_type} hashes")
+
+    def _add_eicar(self):
+        """Thêm EICAR test file hash vào database — dùng cho demo/testing"""
+        if self.hash_type == "sha256":
+            self.hash_set.add(self.EICAR_SHA256)
+            self.info_map[self.EICAR_SHA256] = "EICAR-Test-File (NOT a virus)"
+        elif self.hash_type == "md5":
+            self.hash_set.add(self.EICAR_MD5)
+            self.info_map[self.EICAR_MD5] = "EICAR-Test-File (NOT a virus)"
 
     def compute_hash(self, file_path: str) -> str | None:
         """Tính hash của file"""

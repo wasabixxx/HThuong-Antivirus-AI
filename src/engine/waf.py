@@ -1,9 +1,12 @@
 """
 HThuong Antivirus AI — Web Application Firewall
 Phát hiện SQL Injection, XSS, Command Injection
+Hỗ trợ URL-decode + HTML entity decode để phát hiện payload obfuscated.
 """
 
 import re
+import html
+from urllib.parse import unquote
 
 
 class WAFEngine:
@@ -107,12 +110,34 @@ class WAFEngine:
         """Kiểm tra Path Traversal"""
         return self._check_patterns(payload, self.PATH_TRAVERSAL_PATTERNS, "path_traversal")
 
+    @staticmethod
+    def _normalize_payload(payload: str) -> str:
+        """
+        Chuẩn hóa payload trước khi kiểm tra regex:
+        1. URL-decode (double decode để xử lý %252e → %2e → .)
+        2. HTML entity decode (&#x3C; → <, &lt; → <)
+        3. Loại bỏ null bytes
+        Giúp phát hiện payload obfuscated bypass WAF.
+        """
+        # Double URL-decode
+        decoded = unquote(unquote(payload))
+        # HTML entity decode
+        decoded = html.unescape(decoded)
+        # Loại bỏ null bytes (thường dùng để bypass WAF)
+        decoded = decoded.replace("\x00", "")
+        return decoded
+
     def _check_patterns(self, payload: str, patterns: list[str], attack_type: str) -> dict:
-        """Kiểm tra payload với danh sách regex patterns"""
+        """Kiểm tra payload với danh sách regex patterns (sau khi normalize)"""
+        # Normalize payload (URL-decode, HTML entity decode)
+        normalized = self._normalize_payload(payload)
+
         matched = []
         for pattern in patterns:
             try:
-                if re.search(pattern, payload, re.IGNORECASE):
+                # Kiểm tra cả payload gốc và payload đã normalize
+                if re.search(pattern, payload, re.IGNORECASE) or \
+                   re.search(pattern, normalized, re.IGNORECASE):
                     matched.append(pattern)
             except re.error:
                 continue
@@ -143,15 +168,17 @@ class WAFEngine:
             + cmdi["matched_rules"] + path["matched_rules"]
         )
 
-        attacks_found = []
+        regex_attacks_found = []
         if sqli["detected"]:
-            attacks_found.append("SQL Injection")
+            regex_attacks_found.append("SQL Injection")
         if xss["detected"]:
-            attacks_found.append("XSS")
+            regex_attacks_found.append("XSS")
         if cmdi["detected"]:
-            attacks_found.append("Command Injection")
+            regex_attacks_found.append("Command Injection")
         if path["detected"]:
-            attacks_found.append("Path Traversal")
+            regex_attacks_found.append("Path Traversal")
+
+        attacks_found = list(regex_attacks_found)  # copy
 
         # === ML Prediction (hybrid layer) ===
         ml_result = None
@@ -160,26 +187,31 @@ class WAFEngine:
 
             # ===== HYBRID DECISION LOGIC =====
             #
-            # Case 1: Regex detected, ML says safe → ML override nếu:
-            #   - Regex chỉ match 1 rule (low confidence, likely false positive)
+            # Case 1: Regex detected + ML says safe → ML override nếu:
+            #   - Regex chỉ match ≤ 2 rule (low confidence)
             #   - ML confidence safe >= 0.7
             #   → Tin ML, bỏ qua regex false positive
             #
-            # Case 2: Regex detected, ML cũng detected → Cả hai đồng ý → block
+            # Case 2: Regex detected + ML cũng detected
+            #   → Cả hai đồng ý block. Dùng ML classification (chính xác hơn).
             #
-            # Case 3: Regex clean, ML detected → ML bổ sung nếu confidence >= 0.7
+            # Case 3: Regex clean + ML detected → ML bổ sung nếu confidence >= 0.7
             #
             # Case 4: Cả hai clean → safe
             #
 
             if regex_detected and not ml_result["is_attack"]:
                 # ML nói safe — kiểm tra xem regex có đang false positive không
-                if total_regex_matches <= 1 and ml_result["confidence"] >= 0.7:
-                    # Regex chỉ match 1 rule yếu, ML tự tin nói safe → override
+                if total_regex_matches <= 2 and ml_result["confidence"] >= 0.7:
+                    # Regex match ít rule, ML tự tin nói safe → override
                     regex_detected = False
                     attacks_found = []
-                    # Ghi nhận ML đã override
                     ml_result["ml_override"] = True
+
+            elif regex_detected and ml_result["is_attack"]:
+                # Cả hai phát hiện → dùng ML classification vì chính xác hơn (~98%)
+                attacks_found = [ml_result["predicted_name"]]
+                ml_result["ml_classification_used"] = True
 
             elif not regex_detected and ml_result["is_attack"]:
                 # Regex không thấy, ML phát hiện → bổ sung

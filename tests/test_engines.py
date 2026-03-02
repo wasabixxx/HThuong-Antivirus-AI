@@ -311,6 +311,75 @@ class TestWAFEngine:
         assert result["detected"] is True
         assert len(result["attacks"]) >= 2
 
+    def test_url_encoded_sqli(self, waf_engine):
+        """Phát hiện SQL Injection qua URL-encoding"""
+        encoded_payloads = [
+            "%27%20OR%201%3D1%20--",              # ' OR 1=1 --
+            "%27%20UNION%20SELECT%20*%20--",       # ' UNION SELECT * --
+        ]
+        for payload in encoded_payloads:
+            result = waf_engine.check_all(payload)
+            assert result["detected"] is True, f"Failed to detect URL-encoded SQLi: {payload}"
+
+    def test_url_encoded_path_traversal(self, waf_engine):
+        """Phát hiện Path Traversal qua URL-encoding"""
+        encoded_payloads = [
+            "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",   # ../../../etc/passwd
+            "%2e%2e%5c%2e%2e%5cwindows",                   # ..\..\windows
+            "%252e%252e%252f%252e%252e%252fetc%252fpasswd", # double-encoded
+        ]
+        for payload in encoded_payloads:
+            result = waf_engine.check_all(payload)
+            assert result["detected"] is True, f"Failed to detect encoded traversal: {payload}"
+
+    def test_html_entity_xss(self, waf_engine):
+        """Phát hiện XSS qua HTML entity encoding"""
+        result = waf_engine.check_all("&lt;script&gt;alert(1)&lt;/script&gt;")
+        assert result["detected"] is True, "Failed to detect HTML-entity-encoded XSS"
+
+    def test_null_byte_bypass(self, waf_engine):
+        """Phát hiện payload chứa null bytes"""
+        result = waf_engine.check_all("../../../etc/passwd%00.jpg")
+        assert result["detected"] is True, "Failed to detect null-byte path traversal"
+
+
+# ============================================================
+# TEST EICAR DETECTION
+# ============================================================
+
+class TestEICAR:
+    """Test EICAR standard test file detection"""
+
+    def test_eicar_hash_in_database(self, hash_engine):
+        """EICAR SHA-256 hash phải có trong database"""
+        from engine.hash_engine import HashEngine
+        assert HashEngine.EICAR_SHA256 in hash_engine.hash_set
+
+    def test_eicar_file_detected(self, hash_engine):
+        """EICAR test file phải bị phát hiện bởi hash engine.
+        Lưu ý: Windows Defender có thể chặn file EICAR → skip test.
+        """
+        from engine.hash_engine import HashEngine
+        import hashlib
+
+        # Thay vì tạo file thật (bị AV chặn), kiểm tra logic trực tiếp
+        eicar_hash = hashlib.sha256(HashEngine.EICAR_STRING).hexdigest()
+        assert eicar_hash in hash_engine.hash_set, "EICAR hash should be in database"
+        assert hash_engine.info_map.get(eicar_hash) is not None, "EICAR should have info"
+        assert "EICAR" in hash_engine.info_map[eicar_hash], "Info should mention EICAR"
+
+    def test_eicar_string_constant(self):
+        """Kiểm tra EICAR string đúng chuẩn (68 bytes)"""
+        from engine.hash_engine import HashEngine
+        assert len(HashEngine.EICAR_STRING) == 68
+
+    def test_eicar_sha256_correct(self):
+        """Kiểm tra EICAR SHA-256 hash đúng"""
+        import hashlib
+        from engine.hash_engine import HashEngine
+        computed = hashlib.sha256(HashEngine.EICAR_STRING).hexdigest()
+        assert computed == HashEngine.EICAR_SHA256
+
 
 # ============================================================
 # TEST ML WAF ENGINE

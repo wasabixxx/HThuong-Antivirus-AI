@@ -1,12 +1,12 @@
 {
   "Regex-only": {
-    "accuracy": 0.7946,
-    "macro_f1": 0.7995,
-    "weighted_f1": 0.7917,
-    "detection_rate": 0.8537,
+    "accuracy": 0.8081,
+    "macro_f1": 0.8146,
+    "weighted_f1": 0.8054,
+    "detection_rate": 0.8716,
     "false_positive_rate": 0.1481,
-    "time_seconds": 0.027,
-    "payloads_per_sec": 16124.0
+    "time_seconds": 0.046,
+    "payloads_per_sec": 9675.0
   },
   "ML-only": {
     "accuracy": 0.9842,
@@ -14,16 +14,16 @@
     "weighted_f1": 0.9842,
     "detection_rate": 0.997,
     "false_positive_rate": 0.0093,
-    "time_seconds": 23.718,
+    "time_seconds": 23.193,
     "payloads_per_sec": 19.0
   },
   "Hybrid (Regex+ML)": {
-    "accuracy": 0.9187,
-    "macro_f1": 0.9189,
-    "weighted_f1": 0.9183,
-    "detection_rate": 0.9731,
+    "accuracy": 0.9707,
+    "macro_f1": 0.9708,
+    "weighted_f1": 0.9706,
+    "detection_rate": 0.9761,
     "false_positive_rate": 0.0093,
-    "time_seconds": 24.318,
-    "payloads_per_sec": 18.0
+    "time_seconds": 23.312,
+    "payloads_per_sec": 19.0
   }
 }

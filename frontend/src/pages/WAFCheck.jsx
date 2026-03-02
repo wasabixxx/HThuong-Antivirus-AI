@@ -9,6 +9,10 @@ const EXAMPLE_PAYLOADS = [
   { label: "XSS Img", payload: '<img src=x onerror=alert(document.cookie)>' },
   { label: "Command Injection", payload: "; cat /etc/passwd" },
   { label: "Path Traversal", payload: "../../../etc/passwd" },
+  { label: "URL-Encoded SQLi", payload: "%27%20OR%201%3D1%20--" },
+  { label: "URL-Encoded Traversal", payload: "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd" },
+  { label: "HTML Entity XSS", payload: "&lt;script&gt;alert(1)&lt;/script&gt;" },
+  { label: "Double-Encoded", payload: "%252e%252e%252f%252e%252e%252fetc%252fpasswd" },
   { label: "Safe Input", payload: "Hello, this is a normal search query" },
 ];
 
