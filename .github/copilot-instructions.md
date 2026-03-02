@@ -25,15 +25,16 @@ HThuong-Antivirus-AI/
 │   │   ├── anomaly_engine.py   # Layer 4 — Isolation Forest anomaly detection (ML)
 │   │   ├── waf.py              # WAF — Hybrid regex + ML + URL-decode preprocessing
 │   │   ├── ml_waf.py           # ML WAF — TF-IDF + Random Forest classifier
-│   │   ├── waf_dataset.py      # Training dataset for ML WAF (443 payloads)
-│   │   └── train_waf_model.py  # Training script for ML WAF model
+│   │   ├── waf_dataset.py      # Training dataset for ML WAF (739 raw / 2,469 augmented)
+│   │   └── train_waf_model.py  # Training script + GridSearchCV + feature importance
 │   ├── api/
 │   │   └── server.py           # FastAPI REST server + serves frontend static files
 │   └── database/
 │       └── HashDataBase/       # Local virus hash databases (.unibit files)
 ├── frontend/                   # React 18 SPA (Vite + TailwindCSS)
 │   └── src/
-│       ├── App.jsx             # Main layout — sidebar navigation, dark theme
+│       ├── App.jsx             # Main layout — responsive sidebar, dark theme, mobile hamburger
+│       ├── ErrorBoundary.jsx   # React Error Boundary — crash fallback UI
 │       ├── api.js              # API client module (fetch-based, /api prefix)
 │       └── pages/              # 6 page components
 │           ├── Dashboard.jsx   # Stats + Recharts (Pie, Bar, Area) + engine status
@@ -51,9 +52,15 @@ HThuong-Antivirus-AI/
 │   └── anomaly/                # Anomaly Detection model (Isolation Forest)
 │       ├── isolation_forest.joblib
 │       └── anomaly_metadata.json
+├── scripts/
+│   └── generate_thesis_figures.py  # Thesis figure generator (12 PNG charts)
+├── thesis_figures/                 # Generated thesis figures (PNG)
+├── data/
+│   └── scan_history.json       # Persistent scan history (auto-created, max 500 records)
 ├── tests/                      # Tests & benchmarks
 │   ├── test_engines.py         # Unit tests — 53 tests for all engines (pytest)
-│   └── benchmark_waf.py        # Regex vs ML vs Hybrid benchmark
+│   ├── benchmark_waf.py        # Regex vs ML vs Hybrid benchmark
+│   └── benchmark_anomaly.py    # Anomaly Engine benchmark (real files)
 ├── legacy/                     # Original Fortress desktop project (DO NOT MODIFY)
 ├── .env                        # VT_API_KEY (never committed)
 └── requirements.txt            # Python dependencies
@@ -89,6 +96,7 @@ All file scans pass through layers **sequentially** — early exit on first dete
 2. **Layer 2 — VirusTotal API (cloud, 70+ AV engines)**
    - `VirusTotalEngine` sends file hash to VT API v3 (does NOT upload file by default).
    - Rate limited: 15s minimum between calls (free tier = 4 req/min, 500/day).
+   - **Retry logic**: 3 retries with exponential backoff (15×2^n on 429, 5×(n+1) on timeout).
    - Results are cached in-memory by SHA-256 hash.
    - If detected → return immediately, skip layers 3–4.
 
@@ -100,7 +108,8 @@ All file scans pass through layers **sequentially** — early exit on first dete
 4. **Layer 4 — Anomaly Detection (ML, offline)**
    - `AnomalyEngine` uses **Isolation Forest** (unsupervised ML) to detect anomalous files.
    - Extracts 8 features: entropy, file_size, suspicious_patterns, network_patterns, is_pe, null_byte_ratio, printable_ratio, unique_bytes.
-   - Pre-trained baseline model (525 samples). No labeled malware data needed.
+   - Pre-trained baseline model (740 samples). No labeled malware data needed.
+   - MIN_CONFIDENCE_THRESHOLD = 0.55 to reduce false positives.
    - Acts as final safety net when all other layers return clean.
 
 ---
@@ -109,11 +118,12 @@ All file scans pass through layers **sequentially** — early exit on first dete
 
 ### ML WAF Engine (TF-IDF + Random Forest)
 - **File**: `src/engine/ml_waf.py`
-- **Training**: `src/engine/train_waf_model.py`
-- **Dataset**: `src/engine/waf_dataset.py` (443 labeled payloads)
-- **Pipeline**: TF-IDF character n-grams (2-5) → Random Forest (200 trees)
+- **Training**: `src/engine/train_waf_model.py` (GridSearchCV + feature importance)
+- **Dataset**: `src/engine/waf_dataset.py` (739 raw / 2,469 augmented payloads)
+- **Augmentation**: URL-encode, double URL-encode, case-swap (SQLi), whitespace padding
+- **Pipeline**: TF-IDF character n-grams (2-5, 15K features) → Random Forest (300 trees, GridSearchCV tuned)
 - **Classes**: sqli, xss, cmdi, path_traversal, safe
-- **Accuracy**: ~92% test, ~98% on full dataset
+- **Accuracy**: 98.58% test, 98.89% CV (GridSearchCV best)
 - **Integration**: Hybrid with regex WAF — ML supplements regex detection + overrides classification
 - **Models saved**: `models/waf/`
 
@@ -125,12 +135,24 @@ All file scans pass through layers **sequentially** — early exit on first dete
 - **Auto-trains** baseline on first run if no saved model exists
 - **Models saved**: `models/anomaly/`
 
-### Benchmark
+### WAF Benchmark
 - **File**: `tests/benchmark_waf.py`
-- **Compares**: Regex-only vs ML-only vs Hybrid WAF
+- **Compares**: Regex-only vs ML-only vs Hybrid WAF (on 739 raw samples)
 - **Output**: accuracy, precision, recall, F1, confusion matrix, detection rate
 - **Results saved**: `models/waf/benchmark_results.json`
-- **Latest results**: Regex 80.8% | ML 98.4% | Hybrid 97.1% accuracy, FPR 0.93%
+- **Latest results**: Regex 75.1% | ML **99.6%** | Hybrid **99.6%** accuracy, FPR 0.48%
+
+### Anomaly Benchmark
+- **File**: `tests/benchmark_anomaly.py`
+- **Tests**: Real Windows system files (EXE, DLL, configs) + synthetic malware + EICAR
+- **Results saved**: `models/anomaly/benchmark_results.json`
+- **Latest results**: 97 files, Accuracy 86.6%, FPR 8.0%
+- **Note**: Layer 4 is a safety net — not designed for standalone detection
+
+### Thesis Figures
+- **File**: `scripts/generate_thesis_figures.py`
+- **Output**: 12 PNG charts in `thesis_figures/`
+- **Includes**: confusion matrix, benchmark comparison, FPR, feature importance, per-class metrics, dataset distribution, architecture diagrams, speed vs accuracy, training summary, anomaly benchmark
 
 ---
 
@@ -151,7 +173,7 @@ All routes are prefixed with `/api/`:
 | `GET`    | `/api/eicar`         | Download EICAR test file (base64)      |
 
 - Interactive API docs: `http://localhost:8000/docs`
-- Scan history is in-memory (max 500 records, FIFO eviction).
+- Scan history is **persistent** — saved to `data/scan_history.json` (max 500 records, FIFO eviction). Survives server restarts.
 
 ---
 
@@ -240,6 +262,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 2. **Hash-first approach** — local detection is free and instant; always check local DB before calling any external API.
 3. **VT rate limiting** — 15-second minimum gap between API calls. Never remove or reduce this.
 4. **In-memory caching** — VT results are cached by hash. No external cache (Redis) yet.
+4b. **Persistent scan history** — saved to `data/scan_history.json`, loaded on startup, written after each scan/clear.
 5. **File cleanup** — uploaded files are saved to temp, scanned, then deleted. Never persist uploaded files.
 6. **CORS allow all** — intentional for development. Tighten before production.
 7. **No authentication** — thesis/demo project. Auth is not in scope.
@@ -280,17 +303,18 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 
 ## WAF Engine Patterns
 
-The WAF detects 4 categories of web attacks via regex, with automatic **URL-decode + HTML entity decode** preprocessing:
+The WAF detects **5 categories** of web attacks via regex, with automatic **URL-decode + HTML entity decode** preprocessing:
 
 - **Preprocessing**: `_normalize_payload()` applies double URL-decode (`%2e` → `.`, `%252e` → `.`), HTML entity decode (`&lt;` → `<`), and null byte removal before regex matching.
 - Both the original and normalized payload are checked against all patterns.
 
 | Category           | Pattern count | Examples                              |
 | ------------------ | ------------- | ------------------------------------- |
-| SQL Injection      | 21 patterns   | `' OR 1=1--`, `UNION SELECT`, `DROP TABLE` |
+| SQL Injection      | 22 patterns   | `' OR 1=1--`, `UNION SELECT`, `DROP TABLE` |
 | XSS                | 21 patterns   | `<script>`, `javascript:`, `onerror=` |
 | Command Injection  | 16 patterns   | `; ls`, `$(cmd)`, `` `whoami` ``      |
 | Path Traversal     | 8 patterns    | `../../etc/passwd`, `..\\windows`     |
+| **SSRF**           | **20 patterns** | `http://169.254.169.254`, `gopher://`, `file:///`, internal IPs |
 
 When adding new WAF patterns:
 - Add regex to the appropriate list in `src/engine/waf.py`.

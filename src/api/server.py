@@ -6,9 +6,11 @@ Cung cấp API cho Web Dashboard
 import os
 import sys
 import time
+import json
 import logging
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,8 +84,36 @@ waf_engine = WAFEngine()
 ml_waf_engine = MLWAFEngine()
 anomaly_engine = AnomalyEngine()
 
-# In-memory scan history
-scan_history: list[dict] = []
+# ============================================================
+# PERSISTENT SCAN HISTORY
+# ============================================================
+
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "scan_history.json")
+MAX_HISTORY = 500
+
+def _load_scan_history() -> list[dict]:
+    """Load lịch sử scan từ file JSON"""
+    try:
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                logger.info(f"Loaded {len(data)} history records from disk")
+                return data[-MAX_HISTORY:]  # Giữ max 500
+    except Exception as e:
+        logger.warning(f"Cannot load scan history: {e}")
+    return []
+
+def _save_scan_history():
+    """Lưu lịch sử scan ra file JSON"""
+    try:
+        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(scan_history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Cannot save scan history: {e}")
+
+scan_history: list[dict] = _load_scan_history()
 
 
 def _load_benchmark_results() -> dict | None:
@@ -148,7 +178,8 @@ async def health():
                 "xss": len(waf_engine.XSS_PATTERNS),
                 "cmdi": len(waf_engine.CMDI_PATTERNS),
                 "path_traversal": len(waf_engine.PATH_TRAVERSAL_PATTERNS),
-                "total": len(waf_engine.SQLI_PATTERNS) + len(waf_engine.XSS_PATTERNS) + len(waf_engine.CMDI_PATTERNS) + len(waf_engine.PATH_TRAVERSAL_PATTERNS),
+                "ssrf": len(waf_engine.SSRF_PATTERNS),
+                "total": len(waf_engine.SQLI_PATTERNS) + len(waf_engine.XSS_PATTERNS) + len(waf_engine.CMDI_PATTERNS) + len(waf_engine.PATH_TRAVERSAL_PATTERNS) + len(waf_engine.SSRF_PATTERNS),
             },
             "preprocessing": ["URL-decode (double)", "HTML entity decode", "Null byte removal"],
         },
@@ -516,6 +547,7 @@ async def get_history(limit: int = 50):
 async def clear_history():
     """Xóa lịch sử scan"""
     scan_history.clear()
+    _save_scan_history()
     return {"message": "History cleared"}
 
 
@@ -556,8 +588,9 @@ def _record_scan(result: dict, scan_type: str, start: float):
         entry["action"] = result.get("action", "")
 
     scan_history.append(entry)
-    if len(scan_history) > 500:
+    if len(scan_history) > MAX_HISTORY:
         scan_history.pop(0)
+    _save_scan_history()
 
 
 # ============================================================

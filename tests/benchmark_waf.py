@@ -108,10 +108,10 @@ def run_benchmark():
         print("ERROR: ML WAF model not loaded. Run train_waf_model.py first.")
         return
 
-    # Load dataset
-    print("[2] Loading dataset...")
-    payloads, labels = get_dataset()
-    print(f"  Total: {len(payloads)} samples")
+    # Load dataset (raw — không augment, để benchmark công bằng)
+    print("[2] Loading dataset (raw, no augmentation)...")
+    payloads, labels = get_dataset(augment=False)
+    print(f"  Total: {len(payloads)} samples (raw, no augmentation)")
 
     # Dùng toàn bộ dataset để benchmark (cả train+test)
     label_names = sorted(set(labels))

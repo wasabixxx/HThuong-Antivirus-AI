@@ -93,7 +93,32 @@ class WAFEngine:
         r"c:\\windows",
         r"c:\\boot\.ini",
     ]
-
+    SSRF_PATTERNS = [
+        # Internal IP ranges
+        r"https?://127\.0\.0\.1",
+        r"https?://localhost",
+        r"https?://0\.0\.0\.0",
+        r"https?://10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}",
+        r"https?://172\.(1[6-9]|2[0-9]|3[0-1])\.",
+        r"https?://192\.168\.",
+        r"https?://169\.254\.",        # AWS metadata link-local
+        r"https?://\[::1\]",            # IPv6 localhost
+        # Cloud metadata endpoints
+        r"https?://169\.254\.169\.254",  # AWS/GCP metadata
+        r"https?://metadata\.google\.internal",
+        r"/latest/meta-data",
+        r"/metadata/v1",
+        # Schemes
+        r"gopher://",
+        r"file:///",
+        r"dict://",
+        r"ftp://127\.",
+        r"ftp://localhost",
+        # DNS rebinding / bypass
+        r"https?://0x7f",               # Hex IP 127.x
+        r"https?://2130706433",          # Decimal 127.0.0.1
+        r"https?://017700000001",         # Octal 127.0.0.1
+    ]
     def check_sqli(self, payload: str) -> dict:
         """Kiểm tra SQL Injection"""
         return self._check_patterns(payload, self.SQLI_PATTERNS, "sqli")
@@ -109,6 +134,10 @@ class WAFEngine:
     def check_path_traversal(self, payload: str) -> dict:
         """Kiểm tra Path Traversal"""
         return self._check_patterns(payload, self.PATH_TRAVERSAL_PATTERNS, "path_traversal")
+
+    def check_ssrf(self, payload: str) -> dict:
+        """Kiểm tra Server-Side Request Forgery"""
+        return self._check_patterns(payload, self.SSRF_PATTERNS, "ssrf")
 
     @staticmethod
     def _normalize_payload(payload: str) -> str:
@@ -159,13 +188,15 @@ class WAFEngine:
         xss = self.check_xss(payload)
         cmdi = self.check_cmdi(payload)
         path = self.check_path_traversal(payload)
+        ssrf = self.check_ssrf(payload)
 
-        regex_detected = sqli["detected"] or xss["detected"] or cmdi["detected"] or path["detected"]
+        regex_detected = sqli["detected"] or xss["detected"] or cmdi["detected"] or path["detected"] or ssrf["detected"]
 
         # Tổng số rules match (dùng để đánh giá regex confidence)
         total_regex_matches = (
             sqli["matched_rules"] + xss["matched_rules"]
             + cmdi["matched_rules"] + path["matched_rules"]
+            + ssrf["matched_rules"]
         )
 
         regex_attacks_found = []
@@ -177,6 +208,8 @@ class WAFEngine:
             regex_attacks_found.append("Command Injection")
         if path["detected"]:
             regex_attacks_found.append("Path Traversal")
+        if ssrf["detected"]:
+            regex_attacks_found.append("SSRF")
 
         attacks_found = list(regex_attacks_found)  # copy
 
@@ -210,7 +243,11 @@ class WAFEngine:
 
             elif regex_detected and ml_result["is_attack"]:
                 # Cả hai phát hiện → dùng ML classification vì chính xác hơn (~98%)
+                # Giữ lại SSRF từ regex vì ML không được train trên SSRF
+                ssrf_preserved = "SSRF" in regex_attacks_found
                 attacks_found = [ml_result["predicted_name"]]
+                if ssrf_preserved and "SSRF" not in attacks_found:
+                    attacks_found.append("SSRF")
                 ml_result["ml_classification_used"] = True
 
             elif not regex_detected and ml_result["is_attack"]:
@@ -236,6 +273,7 @@ class WAFEngine:
                 "xss": xss,
                 "command_injection": cmdi,
                 "path_traversal": path,
+                "ssrf": ssrf,
             },
         }
 

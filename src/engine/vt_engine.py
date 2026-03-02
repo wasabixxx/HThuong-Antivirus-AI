@@ -69,9 +69,35 @@ class VirusTotalEngine:
         self._rate_limit()
 
         url = f"{self.BASE_URL}/files/{file_hash}"
-        try:
-            resp = requests.get(url, headers=self.headers, timeout=30)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = requests.get(url, headers=self.headers, timeout=30)
 
+                if resp.status_code == 429:
+                    # Rate limit — exponential backoff
+                    wait = 15 * (2 ** attempt)
+                    if attempt < max_retries - 1:
+                        time.sleep(wait)
+                        continue
+                    return {"error": "Rate limit exceeded after retries"}
+
+                break  # Thành công hoặc lỗi khác → thoát loop
+
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                return {"error": "VirusTotal API timeout after retries"}
+            except requests.exceptions.ConnectionError:
+                if attempt < max_retries - 1:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                return {"error": "Cannot connect to VirusTotal after retries"}
+            except Exception as e:
+                return {"error": f"Unexpected error: {str(e)}"}
+
+        try:
             if resp.status_code == 200:
                 data = resp.json()["data"]["attributes"]
                 stats = data.get("last_analysis_stats", {})
@@ -131,19 +157,12 @@ class VirusTotalEngine:
                     "threat_level": "unknown",
                 }
 
-            elif resp.status_code == 429:
-                return {"error": "Rate limit exceeded. Wait 60s and retry."}
-
             elif resp.status_code == 401:
                 return {"error": "Invalid API key"}
 
             else:
                 return {"error": f"VirusTotal API error: {resp.status_code}"}
 
-        except requests.exceptions.Timeout:
-            return {"error": "VirusTotal API timeout"}
-        except requests.exceptions.ConnectionError:
-            return {"error": "Cannot connect to VirusTotal"}
         except Exception as e:
             return {"error": f"Unexpected error: {str(e)}"}
 

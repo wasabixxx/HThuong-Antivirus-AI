@@ -1,0 +1,94 @@
+[
+  {
+    "timestamp": "2026-03-02T16:03:52.498017",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.127,
+    "attacks": [
+      "Command Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-02T16:04:31.852409",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.102,
+    "attacks": [
+      "Command Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-02T16:04:43.083547",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.097,
+    "attacks": [
+      "Command Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-02T16:05:47.154802",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.1,
+    "attacks": [
+      "Command Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-02T16:08:26.260948",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.133,
+    "attacks": [
+      "Command Injection",
+      "SSRF"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-02T23:32:48.794418",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 3.286,
+    "filename": "Luis Miguel - Voy a Apagar La Luz _ Contigo Aprendí (Karaoke) - Karaoke All Stars (youtube).mp3",
+    "file_size": 10076995
+  },
+  {
+    "timestamp": "2026-03-02T23:33:47.987376",
+    "type": "url",
+    "detected": false,
+    "threat_level": "unknown",
+    "method": "unknown",
+    "scan_time": 1.445,
+    "url": ""
+  },
+  {
+    "timestamp": "2026-03-02T23:34:22.219463",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.501,
+    "attacks": [
+      "SQL Injection"
+    ],
+    "action": "BLOCKED"
+  }
+]

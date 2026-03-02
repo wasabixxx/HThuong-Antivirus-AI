@@ -1,29 +1,29 @@
 {
   "Regex-only": {
-    "accuracy": 0.8081,
-    "macro_f1": 0.8146,
-    "weighted_f1": 0.8054,
-    "detection_rate": 0.8716,
-    "false_positive_rate": 0.1481,
-    "time_seconds": 0.046,
-    "payloads_per_sec": 9675.0
+    "accuracy": 0.751,
+    "macro_f1": 0.7539,
+    "weighted_f1": 0.7477,
+    "detection_rate": 0.8177,
+    "false_positive_rate": 0.1401,
+    "time_seconds": 0.094,
+    "payloads_per_sec": 7871.0
   },
   "ML-only": {
-    "accuracy": 0.9842,
-    "macro_f1": 0.9837,
-    "weighted_f1": 0.9842,
-    "detection_rate": 0.997,
-    "false_positive_rate": 0.0093,
-    "time_seconds": 23.193,
-    "payloads_per_sec": 19.0
+    "accuracy": 0.9959,
+    "macro_f1": 0.9962,
+    "weighted_f1": 0.9959,
+    "detection_rate": 0.9962,
+    "false_positive_rate": 0.0048,
+    "time_seconds": 81.688,
+    "payloads_per_sec": 9.0
   },
   "Hybrid (Regex+ML)": {
-    "accuracy": 0.9707,
-    "macro_f1": 0.9708,
-    "weighted_f1": 0.9706,
-    "detection_rate": 0.9761,
-    "false_positive_rate": 0.0093,
-    "time_seconds": 23.312,
-    "payloads_per_sec": 19.0
+    "accuracy": 0.9959,
+    "macro_f1": 0.996,
+    "weighted_f1": 0.9959,
+    "detection_rate": 0.9981,
+    "false_positive_rate": 0.0048,
+    "time_seconds": 75.554,
+    "payloads_per_sec": 10.0
   }
 }
