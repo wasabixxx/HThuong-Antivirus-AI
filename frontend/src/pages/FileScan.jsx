@@ -1,13 +1,42 @@
-import { useState, useRef } from 'react';
-import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2, Brain } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { FileSearch, Upload, Shield, ShieldAlert, ShieldCheck, ExternalLink, Loader2, Brain, CheckCircle2, Circle } from 'lucide-react';
 import { scanFile } from '../api';
+
+const SCAN_LAYERS = [
+  { id: 'hash', name: 'Layer 1: Local Hash DB', desc: 'SHA-256 lookup in ~39,000 signatures', time: 300 },
+  { id: 'vt', name: 'Layer 2: VirusTotal API', desc: 'Checking 70+ AV engines (cloud)', time: 2000 },
+  { id: 'heuristic', name: 'Layer 3: Heuristic Analysis', desc: 'Entropy + pattern + PE analysis', time: 500 },
+  { id: 'anomaly', name: 'Layer 4: AI Anomaly Detection', desc: 'Isolation Forest ML model', time: 400 },
+];
 
 export default function FileScan() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState(null);
+  const [activeLayer, setActiveLayer] = useState(-1);
   const fileRef = useRef();
+  const timerRef = useRef(null);
+
+  // Animate through layers during scan
+  useEffect(() => {
+    if (loading) {
+      setActiveLayer(0);
+      let layer = 0;
+      const advanceLayer = () => {
+        layer++;
+        if (layer < SCAN_LAYERS.length) {
+          setActiveLayer(layer);
+          timerRef.current = setTimeout(advanceLayer, SCAN_LAYERS[layer].time);
+        }
+      };
+      timerRef.current = setTimeout(advanceLayer, SCAN_LAYERS[0].time);
+    } else {
+      setActiveLayer(-1);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [loading]);
 
   async function handleScan(file) {
     if (!file) return;
@@ -65,10 +94,38 @@ export default function FileScan() {
       >
         <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} />
         {loading ? (
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
-            <p className="text-emerald-400 font-medium">Scanning... Checking 4 layers</p>
-            <p className="text-gray-500 text-sm">Layer 1: Hash DB → Layer 2: VirusTotal → Layer 3: Heuristic → Layer 4: AI Anomaly</p>
+          <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto">
+            <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+            <p className="text-emerald-400 font-medium">Scanning through 4 AI layers...</p>
+            <div className="w-full space-y-2">
+              {SCAN_LAYERS.map((layer, idx) => {
+                const isDone = idx < activeLayer;
+                const isActive = idx === activeLayer;
+                const isPending = idx > activeLayer;
+                return (
+                  <div key={layer.id}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-300 ${
+                      isActive ? 'bg-emerald-500/15 border border-emerald-500/30' :
+                      isDone ? 'bg-gray-800/50 opacity-60' : 'bg-gray-800/30 opacity-40'
+                    }`}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    ) : isActive ? (
+                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium ${isActive ? 'text-emerald-300' : isDone ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {layer.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{layer.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">

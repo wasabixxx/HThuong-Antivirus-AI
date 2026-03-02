@@ -59,3 +59,9 @@ export async function scanDirectory(path) {
   if (!resp.ok) throw new Error(`Directory scan failed: ${resp.status}`);
   return resp.json();
 }
+
+export async function clearHistory() {
+  const resp = await fetch(`${API_BASE}/history`, { method: 'DELETE' });
+  if (!resp.ok) throw new Error(`Clear history failed: ${resp.status}`);
+  return resp.json();
+}

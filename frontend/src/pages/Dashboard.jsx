@@ -1,6 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Shield, ShieldCheck, ShieldAlert, Activity, FileSearch, Globe, ShieldX, Brain, Cpu } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend } from 'recharts';
 import { getStats, getHealth } from '../api';
+
+const COLORS = {
+  safe: '#34d399',
+  low: '#facc15',
+  medium: '#f59e0b',
+  high: '#f97316',
+  critical: '#ef4444',
+  unknown: '#6b7280',
+};
+
+const METHOD_COLORS = {
+  hash_local: '#34d399',
+  virustotal: '#60a5fa',
+  heuristic: '#f59e0b',
+  anomaly_detection: '#a78bfa',
+  all_clear: '#6b7280',
+  waf: '#f87171',
+};
+
+const TYPE_COLORS = {
+  file: '#60a5fa',
+  url: '#34d399',
+  waf: '#f59e0b',
+};
 
 function StatCard({ icon: Icon, label, value, color }) {
   const colors = {
@@ -27,6 +52,18 @@ function StatCard({ icon: Icon, label, value, color }) {
   );
 }
 
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs">
+        <p className="text-white font-medium">{payload[0].name || payload[0].payload?.name}</p>
+        <p className="text-gray-300">{payload[0].value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [health, setHealth] = useState(null);
@@ -49,6 +86,36 @@ export default function Dashboard() {
     }
   }
 
+  // Prepare chart data
+  const charts = stats?.charts || {};
+
+  const threatPieData = Object.entries(charts.threat_distribution || {}).map(([name, value]) => ({
+    name: name.toUpperCase(), value, fill: COLORS[name] || COLORS.unknown,
+  }));
+
+  const methodBarData = Object.entries(charts.method_distribution || {}).map(([name, value]) => ({
+    name: name.replace('_', ' '), fullName: name, value, fill: METHOD_COLORS[name] || '#6b7280',
+  }));
+
+  const typeBarData = Object.entries(charts.type_distribution || {}).map(([name, value]) => ({
+    name: name.toUpperCase(), fullName: name, value, fill: TYPE_COLORS[name] || '#6b7280',
+  }));
+
+  const attackBarData = Object.entries(charts.attack_distribution || {}).map(([name, value]) => ({
+    name, value,
+  }));
+
+  // Timeline: group by minute for area chart
+  const timelineData = (charts.recent_timeline || []).map((entry, idx) => {
+    const t = entry.timestamp ? new Date(entry.timestamp) : null;
+    return {
+      idx: idx + 1,
+      time: t ? t.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : `#${idx + 1}`,
+      threat: entry.detected ? 1 : 0,
+      clean: entry.detected ? 0 : 1,
+    };
+  });
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -64,6 +131,8 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const hasChartData = threatPieData.length > 0 || methodBarData.length > 0;
 
   return (
     <div>
@@ -85,6 +154,133 @@ export default function Dashboard() {
         <StatCard icon={ShieldX} label="WAF Blocked" value={stats?.waf_blocked ?? '—'} color="amber" />
         <StatCard icon={ShieldCheck} label="WAF Checks" value={stats?.waf_checks ?? '—'} color="purple" />
       </div>
+
+      {/* Charts Row 1 — Threat Distribution + Scan Types */}
+      {hasChartData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {/* Threat Level Pie */}
+          {threatPieData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">Threat Level Distribution</h2>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={threatPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={85}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {threatPieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend
+                    verticalAlign="middle"
+                    align="right"
+                    layout="vertical"
+                    formatter={(val) => <span className="text-xs text-gray-300">{val}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Scan Type Bar */}
+          {typeBarData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">Scan Types</h2>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={typeBarData} barSize={40}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {typeBarData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Charts Row 2 — Detection Methods + Attack Types */}
+      {hasChartData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {/* Detection Method Bar */}
+          {methodBarData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">Detection Methods</h2>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={methodBarData} barSize={32} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#9ca3af', fontSize: 11 }} width={100} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    {methodBarData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* WAF Attack Types */}
+          {attackBarData.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">WAF Attack Types</h2>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={attackBarData} barSize={32}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" fill="#f87171" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Scan Timeline */}
+      {timelineData.length > 2 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">Recent Scan Timeline</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={timelineData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#d1d5db' }}
+              />
+              <Area type="monotone" dataKey="clean" stackId="1" stroke="#34d399" fill="#34d39940" name="Clean" />
+              <Area type="monotone" dataKey="threat" stackId="1" stroke="#ef4444" fill="#ef444440" name="Threat" />
+              <Legend formatter={(val) => <span className="text-xs text-gray-300">{val}</span>} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* No data message */}
+      {!hasChartData && stats && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-8 text-center">
+          <Activity className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No scan data yet. Start scanning to see charts!</p>
+        </div>
+      )}
 
       {/* Engine Status */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">

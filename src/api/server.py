@@ -109,10 +109,50 @@ async def health():
 
 @app.get("/api/stats")
 async def get_stats():
+    # Tính toán phân bố từ scan history
+    threat_distribution = {}
+    method_distribution = {}
+    type_distribution = {}
+    attack_distribution = {}
+    recent_timeline = []
+
+    for entry in scan_history:
+        # Threat level distribution
+        tl = entry.get("threat_level", "unknown")
+        threat_distribution[tl] = threat_distribution.get(tl, 0) + 1
+
+        # Detection method distribution
+        m = entry.get("method", "unknown")
+        method_distribution[m] = method_distribution.get(m, 0) + 1
+
+        # Scan type distribution
+        t = entry.get("type", "unknown")
+        type_distribution[t] = type_distribution.get(t, 0) + 1
+
+        # WAF attack types
+        for atk in entry.get("attacks", []):
+            attack_distribution[atk] = attack_distribution.get(atk, 0) + 1
+
+    # Timeline: lấy 50 scans gần nhất
+    for entry in scan_history[-50:]:
+        recent_timeline.append({
+            "timestamp": entry.get("timestamp"),
+            "detected": entry.get("detected", False),
+            "type": entry.get("type"),
+            "threat_level": entry.get("threat_level"),
+        })
+
     return {
         **stats,
         "vt_cache_size": len(vt_engine.cache) if vt_engine else 0,
         "history_count": len(scan_history),
+        "charts": {
+            "threat_distribution": threat_distribution,
+            "method_distribution": method_distribution,
+            "type_distribution": type_distribution,
+            "attack_distribution": attack_distribution,
+            "recent_timeline": recent_timeline,
+        },
     }
 
 

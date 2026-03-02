@@ -36,12 +36,12 @@ HThuong-Antivirus-AI/
 │       ├── App.jsx             # Main layout — sidebar navigation, dark theme
 │       ├── api.js              # API client module (fetch-based, /api prefix)
 │       └── pages/              # 6 page components
-│           ├── Dashboard.jsx   # Stats overview + engine status
-│           ├── FileScan.jsx    # Drag-drop file upload → 4-layer scan
+│           ├── Dashboard.jsx   # Stats + Recharts (Pie, Bar, Area) + engine status
+│           ├── FileScan.jsx    # Drag-drop upload → 4-layer scan + progress animation
 │           ├── DirectoryScan.jsx # Directory path → batch scan
 │           ├── UrlScan.jsx     # URL input → VirusTotal URL analysis
 │           ├── WAFCheck.jsx    # Payload testing with ML analysis display
-│           └── ScanHistory.jsx # Filterable scan log
+│           └── ScanHistory.jsx # Advanced filters + CSV/JSON export + clear
 ├── models/                     # Trained ML models
 │   ├── waf/                    # WAF ML model (TF-IDF + Random Forest)
 │   │   ├── waf_rf_model.joblib
@@ -52,6 +52,7 @@ HThuong-Antivirus-AI/
 │       ├── isolation_forest.joblib
 │       └── anomaly_metadata.json
 ├── tests/                      # Tests & benchmarks
+│   ├── test_engines.py         # Unit tests — 45 tests for all 5 engines (pytest)
 │   └── benchmark_waf.py        # Regex vs ML vs Hybrid benchmark
 ├── legacy/                     # Original Fortress desktop project (DO NOT MODIFY)
 ├── .env                        # VT_API_KEY (never committed)
@@ -70,6 +71,7 @@ HThuong-Antivirus-AI/
 | Detection  | VirusTotal API v3 · Local Hash DB · Heuristic |
 | ML/AI      | scikit-learn (TF-IDF + RF, Isolation Forest) |
 | WAF        | Hybrid: Regex patterns + ML classifier      |
+| Testing    | pytest (45 unit tests across all engines)   |
 | Build      | pip (backend) · npm (frontend)              |
 
 ---
@@ -305,6 +307,7 @@ When adding new WAF patterns:
 | numpy              | Numerical operations (heuristic) |
 | scikit-learn       | ML models (RF, Isolation Forest, TF-IDF) |
 | joblib             | Model serialization              |
+| pytest             | Unit testing framework           |
 
 ### Node.js (`frontend/package.json`)
 
