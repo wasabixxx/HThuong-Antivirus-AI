@@ -235,7 +235,7 @@ class AnomalyEngine:
             # Map: -0.5 → 1.0 (rất đáng ngờ), +0.5 → 0.0 (rất bình thường)
             confidence = max(0.0, min(1.0, 0.5 - float(raw_score)))
 
-            is_anomaly = prediction == -1
+            is_anomaly = bool(prediction == -1)
 
             # Determine threat level
             if confidence >= 0.7:
