@@ -1,32 +1,7 @@
 # 📋 TODO — HThuong Antivirus AI
 
-> Danh sách công việc cần hoàn thiện để dự án sẵn sàng demo trước hội đồng.
-> Đánh dấu `[x]` khi hoàn thành.
-
----
-
-## 🔴 Ưu tiên cao — Phải xong trước demo
-
-### Backend (Python/FastAPI)
-
-- [ ] **Thêm endpoint quét thư mục** (`POST /api/scan/directory`) — model `DirectoryScanRequest` đã khai báo trong `server.py` nhưng chưa có route handler
-- [ ] **Thêm `clearHistory()` vào `api.js`** — backend hỗ trợ `DELETE /api/history` nhưng frontend chưa gọi được
-- [ ] **Xử lý lỗi khi VT API key hết quota** — hiện chỉ trả `{"error": "Rate limit exceeded"}`, cần fallback sang Layer 3 thay vì dừng
-- [ ] **Thêm file size limit cho upload** — ngăn file > 100MB làm crash server (thêm validation trong endpoint `/api/scan/file`)
-- [ ] **Viết unit tests** — thư mục `tests/` hiện rỗng (chỉ có `.gitkeep`)
-  - [ ] Test `HashEngine.check()` với file sạch và file malware đã biết
-  - [ ] Test `HeuristicEngine` với file entropy cao vs thấp
-  - [ ] Test `WAFEngine.check_all()` với từng loại attack
-  - [ ] Test API endpoints bằng `httpx.AsyncClient` (FastAPI TestClient)
-
-### Frontend (React)
-
-- [ ] **Dashboard: Thêm biểu đồ Recharts** — `recharts` đã cài nhưng chưa dùng ở bất kỳ page nào
-  - [ ] Pie chart phân bố threat level (safe/low/medium/high/critical)
-  - [ ] Bar chart hoặc line chart xu hướng scan theo thời gian
-- [ ] **ScanHistory: Thêm nút xoá lịch sử** — icon `Trash2` đã import nhưng chưa sử dụng, `DELETE /api/history` chưa có trong `api.js`
-- [ ] **ScanHistory: Hiển thị lỗi cho user** — hiện chỉ `console.error`, không có error UI
-- [ ] **FileScan: Reset file input sau khi scan** — chọn lại cùng file thì `onChange` không fire
+> Danh sách công việc để dự án sẵn sàng demo trước hội đồng.
+> Cập nhật lần cuối: 2026-03-02
 
 ---
 
@@ -35,22 +10,17 @@
 ### Backend
 
 - [ ] **Logging hệ thống** — thay `print()` bằng `logging` module với levels (INFO, WARNING, ERROR)
-- [ ] **Hash Engine: hỗ trợ cả SHA-256 lẫn MD5 đồng thời** — hiện chỉ load 1 loại hash, nên load cả hai để tăng coverage
-- [ ] **VT Engine: retry logic** — khi gặp timeout hoặc 429, tự retry sau delay thay vì trả lỗi ngay
-- [ ] **Scan report export** — endpoint `GET /api/report/{scan_id}` trả JSON/PDF chi tiết kết quả scan
-- [ ] **Persistent storage** — lưu scan history ra file JSON thay vì chỉ in-memory (mất khi restart server)
-- [ ] **WAF Engine: thêm SSRF patterns** — hiện chỉ có SQLi/XSS/CMDi/Path Traversal, thiếu SSRF
+- [ ] **File size limit cho upload** — ngăn file > 100MB làm crash server
+- [ ] **VT Engine: retry logic** — khi gặp timeout hoặc 429, tự retry sau delay
+- [ ] **WAF Engine: thêm SSRF patterns** — hiện chỉ có SQLi/XSS/CMDi/Path Traversal
+- [ ] **Persistent storage** — lưu scan history ra file JSON (mất khi restart server)
 
 ### Frontend
 
-- [ ] **URL Scan: validate URL format** — hiện chấp nhận mọi string, cần check `http://`/`https://` prefix
-- [ ] **FileScan: hiển thị progress từng layer** — thay vì spinner chung, show "Đang quét Layer 1...", "Layer 2..."
-- [ ] **FileScan: nút "Scan lại" / "Quét file khác"** — sau khi có kết quả, phải refresh trang mới scan tiếp
-- [ ] **ScanHistory: phân trang** — hardcode lấy 100 items, backend hỗ trợ 500
-- [ ] **ScanHistory: hiển thị ngày** — hiện chỉ show giờ, không show ngày tháng
-- [ ] **ScanHistory: key dùng index** — nên dùng unique ID thay vì array index (`key={i}`)
-- [ ] **Dark mode toggle** — hiện fix cứng dark, thêm nút chuyển light/dark
-- [ ] **Responsive mobile** — sidebar chưa responsive trên màn hình nhỏ
+- [ ] **URL Scan: validate URL format** — cần check `http://`/`https://` prefix trước khi gửi
+- [ ] **Error Boundary** — React crash sẽ hiện trang trắng, cần fallback UI
+- [ ] **Dark mode toggle** — hiện fix cứng dark
+- [ ] **Responsive mobile** — sidebar chưa responsive
 
 ---
 
@@ -58,65 +28,79 @@
 
 ### Tính năng mới
 
-- [ ] **Real-time notifications** — WebSocket push khi scan xong (thay vì polling)
-- [ ] **Batch scan nhiều file** — kéo thả nhiều file cùng lúc, quét tuần tự
-- [ ] **So sánh kết quả scan** — cho phép chọn 2 lần scan để so sánh
-- [ ] **Phishing URL detection** — ML model detect URL phishing (ngoài VT) → sử dụng thư mục `models/`
-- [ ] **YARA rules engine** — thêm Layer 4 quét bằng YARA signatures
-- [ ] **API key management UI** — cho phép nhập/thay đổi VT API key từ dashboard thay vì sửa `.env`
-- [ ] **Email alert** — gửi email khi phát hiện threat critical
-- [ ] **Multi-language UI** — hỗ trợ chuyển đổi Tiếng Việt / English
+- [ ] **Real-time notifications** — WebSocket push khi scan xong
+- [ ] **Batch scan nhiều file** — kéo thả nhiều file cùng lúc
+- [ ] **Phishing URL detection** — ML model detect URL phishing (ngoài VT)
+- [ ] **API key management UI** — nhập/thay đổi VT API key từ dashboard
 
 ### DevOps & Deployment
 
-- [ ] **Dockerfile** — containerize backend + frontend
-- [ ] **docker-compose.yml** — chạy cả hệ thống bằng 1 lệnh
+- [ ] **Dockerfile + docker-compose** — chạy cả hệ thống bằng 1 lệnh
 - [ ] **CI/CD pipeline** — GitHub Actions: lint → test → build → deploy
-- [ ] **Production build** — `vite build` + serve static từ FastAPI (loại bỏ cần 2 servers)
-- [ ] **Git LFS cho hash DB** — file `md5HashOfVirus.unibit` (~62MB) vượt giới hạn GitHub khuyến nghị
 - [ ] **HTTPS** — thêm TLS cho production
-- [ ] **Rate limiting middleware** — chống spam API từ bên ngoài (SlowAPI hoặc custom)
+- [ ] **Rate limiting middleware** — SlowAPI hoặc custom
 
 ### Code Quality
 
-- [ ] **Type hints hoàn chỉnh** — một số hàm còn thiếu return type annotation
-- [ ] **Docstrings cho tất cả public methods** — đặc biệt trong `server.py`
 - [ ] **ESLint + Prettier** — frontend chưa có linting config
-- [ ] **Pre-commit hooks** — black + isort + flake8 cho Python, eslint cho JS
-- [ ] **API error handling thống nhất** — tạo exception handler global cho FastAPI
-- [ ] **Accessibility (a11y)** — thêm ARIA labels, keyboard navigation cho frontend
+- [ ] **Pre-commit hooks** — black + isort + flake8 cho Python
+- [ ] **API error handling thống nhất** — exception handler global cho FastAPI
 
 ---
 
 ## 📝 Tài liệu
 
-- [ ] **Bổ sung API docs** — Swagger tự sinh nhưng thiếu description chi tiết cho từng field
-- [ ] **Viết CONTRIBUTING.md** — hướng dẫn contribute cho người mới
-- [ ] **Architecture diagram** — vẽ sơ đồ kiến trúc hệ thống (draw.io hoặc Mermaid)
+- [ ] **Architecture diagram** — sơ đồ kiến trúc 4-layer detection (Mermaid)
 - [ ] **Slide thuyết trình** — chuẩn bị slide demo cho hội đồng
-- [ ] **Video demo** — record demo quét file + URL + WAF trên web dashboard
+- [ ] **Video demo** — record demo quét file + URL + WAF
 
 ---
 
 ## 🐛 Bugs đã biết
 
-- [ ] **Hash DB path lồng 2 tầng** — `hash_engine.py` trỏ tới `database/HashDataBase/HashDataBase/Sha256/` (thư mục lồng `HashDataBase` 2 lần), hoạt động nhưng không đẹp
-- [ ] **Large file warning trên GitHub** — `legacy/Fortress-original/md5HashOfVirus.unibit` (61.88MB) trigger cảnh báo mỗi lần push
-- [ ] **VT URL scan chờ cứng 5s** — `vt_engine.py` dòng `time.sleep(5)` trước khi lấy kết quả, nếu VT chưa xong sẽ thiếu data
-- [ ] **Frontend không có error boundary** — React crash sẽ hiện trang trắng thay vì fallback UI
+- [ ] **Hash DB path lồng 2 tầng** — `database/HashDataBase/HashDataBase/Sha256/` (thư mục lồng 2 lần)
+- [ ] **Large file trên GitHub** — `legacy/md5HashOfVirus.unibit` (~62MB) trigger cảnh báo
+- [ ] **VT URL scan chờ cứng 5s** — `time.sleep(5)` có thể thiếu data nếu VT chưa xong
 
 ---
 
 ## ✅ Đã hoàn thành
 
-- [x] Restructure project từ Fortress → HThuong Antivirus AI
-- [x] Hash Engine (Layer 1) — SHA-256 O(1) lookup, ~39K hashes
-- [x] VirusTotal Engine (Layer 2) — API v3, rate limiting, caching
-- [x] Heuristic Engine (Layer 3) — entropy, patterns, PE analysis
-- [x] WAF Engine — SQLi (21), XSS (21), CMDi (16), Path Traversal (8)
-- [x] FastAPI server với 7 endpoints
-- [x] React dashboard với 5 pages (Dashboard, FileScan, UrlScan, WAF, History)
+### Core Engines
+- [x] Hash Engine (Layer 1) — SHA-256 O(1) lookup, ~39K hashes + EICAR test
+- [x] VirusTotal Engine (Layer 2) — API v3, rate limiting 15s, caching
+- [x] Heuristic Engine (Layer 3) — entropy, 22 malware + 11 network patterns, PE analysis
+- [x] Anomaly Engine (Layer 4) — Isolation Forest, 8 features, 740 training samples
+- [x] WAF Engine — Hybrid: Regex (67 patterns) + ML (TF-IDF + Random Forest, 97% accuracy)
+- [x] ML WAF Engine — 443 labeled payloads, 5 classes (sqli, xss, cmdi, path_traversal, safe)
+
+### Backend (FastAPI)
+- [x] FastAPI server với 9 endpoints (health, stats, scan/file, scan/url, scan/directory, waf/check, history GET/DELETE, eicar)
+- [x] Endpoint quét thư mục `POST /api/scan/directory` — batch scan + validation
+- [x] `clearHistory()` API + `DELETE /api/history`
+- [x] VT API quota fallback — Layer 2 skip khi key missing, auto-degrade
+- [x] Context-aware Layer 4 — require confidence >= 0.65 khi layers 1-3 clean
+- [x] File cleanup — uploaded files scanned then deleted
+
+### Frontend (React 18 + Vite)
+- [x] 6 pages: Dashboard, FileScan, UrlScan, WAFCheck, ScanHistory, DirectoryScan
+- [x] Dashboard: 5 biểu đồ Recharts (PieChart, BarChart x3, AreaChart)
+- [x] FileScan: Drag-drop + EICAR test button + 4-layer progress animation
+- [x] ScanHistory: Bộ lọc nâng cao + CSV/JSON export + nút xoá lịch sử
+- [x] PDF export: 5 loại báo cáo (file, URL, WAF, directory, history) — jsPDF + autoTable
+- [x] Vietnamese UI toàn bộ
+- [x] Dark theme (gray-950 + emerald-400)
+- [x] Code splitting: main 86KB, pdf 422KB, charts 565KB
+
+### ML/AI Models
+- [x] WAF ML model — `models/waf/` (waf_rf_model.joblib, tfidf_vectorizer, metadata, benchmark)
+- [x] Anomaly model — `models/anomaly/` (isolation_forest.joblib, metadata)
+- [x] WAF Benchmark — Regex 80.8% | ML 98.4% | Hybrid 97.1% accuracy
+
+### Infrastructure
+- [x] PWA — manifest.json, service worker (network-first API, cache-first static), icons 192+512
 - [x] Vite proxy config (frontend → backend)
-- [x] Dark theme UI (gray-950 + emerald-400)
-- [x] `.github/copilot-instructions.md`
+- [x] Production build — `vite build` + FastAPI serves `frontend/dist/`
+- [x] Unit tests — 53 tests across 7 test classes (pytest)
+- [x] `.github/copilot-instructions.md` — comprehensive project docs
 - [x] Push lên GitHub (`wasabixxx/HThuong-Antivirus-AI`)

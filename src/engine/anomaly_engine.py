@@ -7,7 +7,10 @@ Không cần label — học từ đặc trưng của file bình thường.
 import os
 import math
 import json
+import logging
 import numpy as np
+
+logger = logging.getLogger("hthuong.anomaly_engine")
 
 try:
     from sklearn.ensemble import IsolationForest
@@ -57,7 +60,7 @@ class AnomalyEngine:
     def _load_or_create_model(self):
         """Load model nếu có, nếu chưa thì tạo mới với default params"""
         if not ML_AVAILABLE:
-            print("[AnomalyEngine] scikit-learn not installed — disabled")
+            logger.warning("scikit-learn not installed — disabled")
             return
 
         if os.path.exists(self.MODEL_PATH):
@@ -67,10 +70,10 @@ class AnomalyEngine:
                     with open(self.METADATA_PATH, "r", encoding="utf-8") as f:
                         self.metadata = json.load(f)
                 self.is_loaded = True
-                print(f"[AnomalyEngine] Model loaded — samples: {self.metadata.get('trained_samples', 'N/A')}")
+                logger.info(f"Model loaded — samples: {self.metadata.get('trained_samples', 'N/A')}")
                 return
             except Exception as e:
-                print(f"[AnomalyEngine] Failed to load: {e}")
+                logger.error(f"Failed to load model: {e}")
 
         # Tạo model mới với pre-configured params
         # contamination: tỉ lệ anomaly giả định (5%)
@@ -206,7 +209,7 @@ class AnomalyEngine:
         with open(self.METADATA_PATH, "w", encoding="utf-8") as f:
             json.dump(self.metadata, f, indent=2, ensure_ascii=False)
 
-        print(f"[AnomalyEngine] Baseline model trained — {len(training_data)} samples ({n_normal} normal + {n_anomaly} anomaly)")
+        logger.info(f"Baseline model trained — {len(training_data)} samples ({n_normal} normal + {n_anomaly} anomaly)")
 
     def extract_features(self, file_path: str) -> np.ndarray | None:
         """Extract feature vector từ file"""

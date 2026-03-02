@@ -4,7 +4,10 @@ Tầng 1: Quét offline siêu nhanh bằng local hash database
 """
 
 import hashlib
+import logging
 import os
+
+logger = logging.getLogger("hthuong.hash_engine")
 
 
 class HashEngine:
@@ -56,7 +59,7 @@ class HashEngine:
                 if i < len(infos):
                     self.info_map[h] = infos[i]
 
-        print(f"[HashEngine] Loaded {len(self.hash_set)} {self.hash_type} hashes")
+        logger.info(f"Loaded {len(self.hash_set)} {self.hash_type} hashes")
 
     def _add_eicar(self):
         """Thêm EICAR test file hash vào database — dùng cho demo/testing"""

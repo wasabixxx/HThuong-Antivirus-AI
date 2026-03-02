@@ -6,7 +6,10 @@ Kết hợp với rule-based WAF để tạo hệ thống hybrid.
 
 import os
 import json
+import logging
 import numpy as np
+
+logger = logging.getLogger("hthuong.ml_waf")
 
 try:
     import joblib
@@ -41,7 +44,7 @@ class MLWAFEngine:
     def _load_model(self):
         """Load pre-trained model và vectorizer"""
         if not ML_AVAILABLE:
-            print("[MLWAFEngine] scikit-learn/joblib not installed — ML WAF disabled")
+            logger.warning("scikit-learn/joblib not installed — ML WAF disabled")
             return
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +55,7 @@ class MLWAFEngine:
         metadata_path = os.path.join(model_dir, "waf_model_metadata.json")
 
         if not os.path.exists(model_path) or not os.path.exists(vectorizer_path):
-            print("[MLWAFEngine] Model not found — run train_waf_model.py first")
+            logger.warning("Model not found — run train_waf_model.py first")
             return
 
         try:
@@ -65,10 +68,10 @@ class MLWAFEngine:
 
             self.is_loaded = True
             accuracy = self.metadata.get("test_accuracy", "N/A") if self.metadata else "N/A"
-            print(f"[MLWAFEngine] Model loaded — accuracy: {accuracy}")
+            logger.info(f"Model loaded — accuracy: {accuracy}")
 
         except Exception as e:
-            print(f"[MLWAFEngine] Failed to load model: {e}")
+            logger.error(f"Failed to load model: {e}")
             self.model = None
             self.vectorizer = None
 

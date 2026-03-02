@@ -4,7 +4,7 @@
  * Sử dụng jsPDF + jspdf-autotable
  */
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // ============================================================
 // HELPERS
@@ -143,7 +143,7 @@ export function exportFileScanPDF(result) {
   // === Thông tin tệp ===
   y = addSectionTitle(doc, y, 'THONG TIN TEP');
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     theme: 'plain',
@@ -168,7 +168,7 @@ export function exportFileScanPDF(result) {
     y = checkPageBreak(doc, y, 40);
     y = addSectionTitle(doc, y, 'KET QUA VIRUSTOTAL');
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Doc hai', 'Dang ngo', 'Khong phat hien', 'Tong engine']],
@@ -210,7 +210,7 @@ export function exportFileScanPDF(result) {
       }
     }
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Tang phat hien', 'Ket qua', 'Do tin cay']],
@@ -241,7 +241,7 @@ export function exportFileScanPDF(result) {
     const feat = result.layers.anomaly_detection.features;
     const anomaly = result.layers.anomaly_detection;
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Dac trung', 'Gia tri']],
@@ -271,7 +271,7 @@ export function exportFileScanPDF(result) {
     y = checkPageBreak(doc, y, 30);
     y = addSectionTitle(doc, y, 'LY DO HEURISTIC');
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       body: result.reasons.map((r, i) => [`${i + 1}.`, r]),
@@ -312,7 +312,7 @@ export function exportUrlScanPDF(result) {
 
   y = addSectionTitle(doc, y, 'THONG TIN URL');
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     theme: 'plain',
@@ -332,7 +332,7 @@ export function exportUrlScanPDF(result) {
   if (result.stats) {
     y = addSectionTitle(doc, y, 'KET QUA VIRUSTOTAL');
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Doc hai', 'Dang ngo', 'An toan', 'Tong']],
@@ -381,7 +381,7 @@ export function exportWAFCheckPDF(result, payload) {
 
   y = addSectionTitle(doc, y, 'THONG TIN PAYLOAD');
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     theme: 'plain',
@@ -415,7 +415,7 @@ export function exportWAFCheckPDF(result, payload) {
       a.severity || 'N/A',
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Loai tan cong', 'Ket qua', 'Luat khop', 'Muc do']],
@@ -455,7 +455,7 @@ export function exportWAFCheckPDF(result, payload) {
       }
     }
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       theme: 'plain',
@@ -485,7 +485,7 @@ export function exportHistoryPDF(items) {
   const threats = items.filter(i => i.detected).length;
   const safe = items.length - threats;
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     head: [['Tong luot quet', 'Moi de doa', 'An toan', 'Ti le phat hien']],
@@ -516,7 +516,7 @@ export function exportHistoryPDF(items) {
     `${item.scan_time || 0}s`,
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     head: [['Thoi gian', 'Loai', 'Doi tuong', 'Ket qua', 'Muc do', 'Phuong thuc', 'Thoi gian quet']],
@@ -571,7 +571,7 @@ export function exportDirectoryScanPDF(result) {
   // Stats
   y = addSectionTitle(doc, y, 'THONG KE');
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     theme: 'plain',
@@ -603,7 +603,7 @@ export function exportDirectoryScanPDF(result) {
         `${((t.confidence || 0) * 100).toFixed(1)}%`,
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: y,
         margin: { left: 14, right: 14 },
         head: [['Ten tep', 'Phuong thuc', 'Muc do', 'Do tin cay']],

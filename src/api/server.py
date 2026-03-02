@@ -6,6 +6,7 @@ Cung cấp API cho Web Dashboard
 import os
 import sys
 import time
+import logging
 import tempfile
 from datetime import datetime
 
@@ -15,6 +16,23 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
+# ============================================================
+# LOGGING SETUP
+# ============================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("hthuong.server")
+
+# Giảm log spam từ uvicorn, httpcore
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+# Giới hạn file upload: 100 MB
+MAX_FILE_SIZE = 100 * 1024 * 1024
 
 # Load .env — thử nhiều path để đảm bảo tìm được .env
 _env_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"))
@@ -217,6 +235,16 @@ async def scan_file(file: UploadFile = File(...)):
 
     # Save temp file
     content = await file.read()
+
+    # === Kiểm tra kích thước file ===
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File quá lớn ({len(content) / 1024 / 1024:.1f} MB). Giới hạn tối đa {MAX_FILE_SIZE // 1024 // 1024} MB."
+        )
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="File rỗng — không thể quét.")
+
     with tempfile.NamedTemporaryFile(delete=False, suffix="_" + (file.filename or "unknown")) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
@@ -556,9 +584,9 @@ if os.path.isdir(_frontend_dist):
             return FileResponse(file_path)
         return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
-    print(f"[Server] Serving frontend from {_frontend_dist}")
+    logger.info(f"Serving frontend from {_frontend_dist}")
 else:
-    print(f"[Server] Frontend dist not found at {_frontend_dist} — run 'npm run build' in frontend/")
+    logger.warning(f"Frontend dist not found at {_frontend_dist} — run 'npm run build' in frontend/")
 
 
 # ============================================================
@@ -567,13 +595,13 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    print("=" * 50)
-    print("  HThuong Antivirus AI — API Server")
-    print("=" * 50)
-    print(f"  Hash DB: {len(hash_engine.hash_set)} hashes loaded")
-    print(f"  VirusTotal: {'Connected' if vt_engine else 'Not configured'}")
-    print(f"  Heuristic: Active")
-    print(f"  WAF: Active")
-    print(f"  Frontend: {'Served from dist/' if os.path.isdir(_frontend_dist) else 'Not built'}")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("  HThuong Antivirus AI — API Server")
+    logger.info("=" * 50)
+    logger.info(f"  Hash DB: {len(hash_engine.hash_set)} hashes loaded")
+    logger.info(f"  VirusTotal: {'Connected' if vt_engine else 'Not configured'}")
+    logger.info(f"  Heuristic: Active")
+    logger.info(f"  WAF: Active")
+    logger.info(f"  Frontend: {'Served from dist/' if os.path.isdir(_frontend_dist) else 'Not built'}")
+    logger.info("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=8000)

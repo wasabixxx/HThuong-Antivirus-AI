@@ -11,7 +11,18 @@ export default function UrlScan() {
 
   async function handleScan(e) {
     e.preventDefault();
-    if (!url.trim()) return;
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    // Validate URL format
+    if (!/^https?:\/\/.+/i.test(trimmed)) {
+      setError('URL phải bắt đầu bằng http:// hoặc https://');
+      return;
+    }
+    try { new URL(trimmed); } catch {
+      setError('URL không hợp lệ. Ví dụ: https://example.com');
+      return;
+    }
 
     setLoading(true);
     setResult(null);

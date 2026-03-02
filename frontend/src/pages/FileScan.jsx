@@ -39,8 +39,21 @@ export default function FileScan() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [loading]);
 
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
   async function handleScan(file) {
     if (!file) return;
+
+    // Kiểm tra kích thước file
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File quá lớn (${(file.size / 1024 / 1024).toFixed(1)} MB). Giới hạn tối đa 100 MB.`);
+      return;
+    }
+    if (file.size === 0) {
+      setError('File rỗng — không thể quét.');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setError(null);
