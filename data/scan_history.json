@@ -90,5 +90,238 @@
       "SQL Injection"
     ],
     "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T00:56:16.344769",
+    "type": "url",
+    "detected": true,
+    "threat_level": "low",
+    "method": "virustotal_url",
+    "scan_time": 15.844,
+    "url": "https://www.eicar.org/?page_id=3950"
+  },
+  {
+    "timestamp": "2026-03-03T00:56:42.913512",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 0.885,
+    "filename": "eicar_test_file.txt",
+    "file_size": 68
+  },
+  {
+    "timestamp": "2026-03-03T00:56:59.893622",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 0.637,
+    "filename": "eicar_test_file.txt",
+    "file_size": 68
+  },
+  {
+    "timestamp": "2026-03-03T00:58:08.901431",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 0.926,
+    "filename": "quet-url_1772469232720.pdf",
+    "file_size": 5824
+  },
+  {
+    "timestamp": "2026-03-03T00:58:36.490350",
+    "type": "file",
+    "detected": true,
+    "threat_level": "low",
+    "method": "virustotal",
+    "scan_time": 1.458,
+    "filename": "Vovious.v1.0.11.exe",
+    "file_size": 14597347
+  },
+  {
+    "timestamp": "2026-03-03T01:00:51.777740",
+    "type": "waf",
+    "detected": false,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.147,
+    "attacks": [],
+    "action": "ALLOWED"
+  },
+  {
+    "timestamp": "2026-03-03T01:00:53.879775",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.099,
+    "attacks": [
+      "Path Traversal"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:00:57.092928",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.101,
+    "attacks": [
+      "Path Traversal"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:00:59.857439",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.127,
+    "attacks": [
+      "SQL Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:03.093621",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.101,
+    "attacks": [
+      "SQL Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:07.724514",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.121,
+    "attacks": [
+      "Path Traversal"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:11.593806",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.127,
+    "attacks": [
+      "Command Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:15.626656",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.103,
+    "attacks": [
+      "Cross-Site Scripting (XSS)"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:18.535937",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.132,
+    "attacks": [
+      "Cross-Site Scripting (XSS)"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:20.942687",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.109,
+    "attacks": [
+      "Cross-Site Scripting (XSS)"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:23.337498",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.112,
+    "attacks": [
+      "SQL Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:34.132534",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.121,
+    "attacks": [
+      "SQL Injection"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:01:37.131851",
+    "type": "waf",
+    "detected": true,
+    "threat_level": "unknown",
+    "method": "waf",
+    "scan_time": 0.138,
+    "attacks": [
+      "Path Traversal"
+    ],
+    "action": "BLOCKED"
+  },
+  {
+    "timestamp": "2026-03-03T01:02:13.321783",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 0.684,
+    "filename": "eicar_test_file.txt",
+    "file_size": 68
+  },
+  {
+    "timestamp": "2026-03-03T01:03:33.917830",
+    "type": "file",
+    "detected": false,
+    "threat_level": "safe",
+    "method": "all_clear",
+    "scan_time": 0.769,
+    "filename": "eicar_test_file.txt",
+    "file_size": 68
+  },
+  {
+    "timestamp": "2026-03-03T01:05:05.572012",
+    "type": "file",
+    "detected": true,
+    "threat_level": "critical",
+    "method": "hash_local",
+    "scan_time": 0.0,
+    "filename": "eicar_test_file.txt",
+    "file_size": 68
   }
 ]

@@ -78,7 +78,8 @@ class HashEngine:
                 for chunk in iter(lambda: f.read(8192), b""):
                     h.update(chunk)
             return h.hexdigest()
-        except (IOError, PermissionError, OSError):
+        except (IOError, PermissionError, OSError) as e:
+            logger.error(f"Cannot read file for hashing: {file_path} — {e}")
             return None
 
     def check(self, file_path: str) -> dict:

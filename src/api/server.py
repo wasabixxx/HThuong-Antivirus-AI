@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import json
+import hashlib
 import logging
 import tempfile
 from datetime import datetime
@@ -275,6 +276,36 @@ async def scan_file(file: UploadFile = File(...)):
         )
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="File rỗng — không thể quét.")
+
+    # === PRE-CHECK: Tính hash từ memory trước khi ghi file ===
+    # (trên Windows, Defender có thể quarantine file EICAR ngay khi ghi ra disk)
+    memory_sha256 = hashlib.sha256(content).hexdigest()
+
+    # Nếu hash match database ngay từ memory → trả kết quả luôn, không cần ghi file
+    if memory_sha256 in hash_engine.hash_set:
+        result = {
+            "filename": file.filename,
+            "file_size": len(content),
+            "scan_time": round(time.time() - start, 3),
+            "layers": {
+                "hash_local": {
+                    "detected": True,
+                    "method": "hash_local",
+                    "hash": memory_sha256,
+                    "confidence": 1.0,
+                    "threat_level": "critical",
+                    "threat_name": hash_engine.info_map.get(memory_sha256, "Known Malware"),
+                }
+            },
+            "detected": True,
+            "method": "hash_local",
+            "confidence": 1.0,
+            "threat_level": "critical",
+            "threat_name": hash_engine.info_map.get(memory_sha256, "Known Malware"),
+            "message": "Known malware detected (local database)",
+        }
+        _record_scan(result, "file", start)
+        return result
 
     with tempfile.NamedTemporaryFile(delete=False, suffix="_" + (file.filename or "unknown")) as tmp:
         tmp.write(content)
