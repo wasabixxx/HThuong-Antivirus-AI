@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { ShieldAlert, Send, ShieldCheck, ShieldX, Loader2, Brain, Cpu } from 'lucide-react';
+import { ShieldAlert, Send, ShieldCheck, ShieldX, Loader2, Brain, Cpu, FileDown } from 'lucide-react';
 import { checkWAF } from '../api';
+import { exportWAFCheckPDF } from '../pdfExport';
 
 const EXAMPLE_PAYLOADS = [
-  { label: "SQL Injection", payload: "' OR 1=1 --" },
+  { label: "Chèn SQL", payload: "' OR 1=1 --" },
   { label: "SQL Union", payload: "' UNION SELECT username, password FROM users --" },
   { label: "XSS Script", payload: '<script>alert("XSS")</script>' },
   { label: "XSS Img", payload: '<img src=x onerror=alert(document.cookie)>' },
-  { label: "Command Injection", payload: "; cat /etc/passwd" },
-  { label: "Path Traversal", payload: "../../../etc/passwd" },
-  { label: "URL-Encoded SQLi", payload: "%27%20OR%201%3D1%20--" },
-  { label: "URL-Encoded Traversal", payload: "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd" },
-  { label: "HTML Entity XSS", payload: "&lt;script&gt;alert(1)&lt;/script&gt;" },
-  { label: "Double-Encoded", payload: "%252e%252e%252f%252e%252e%252fetc%252fpasswd" },
-  { label: "Safe Input", payload: "Hello, this is a normal search query" },
+  { label: "Chèn lệnh", payload: "; cat /etc/passwd" },
+  { label: "Duyệt đường dẫn", payload: "../../../etc/passwd" },
+  { label: "SQLi mã hoá URL", payload: "%27%20OR%201%3D1%20--" },
+  { label: "Duyệt mã hoá URL", payload: "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd" },
+  { label: "XSS HTML Entity", payload: "&lt;script&gt;alert(1)&lt;/script&gt;" },
+  { label: "Mã hoá kép", payload: "%252e%252e%252f%252e%252e%252fetc%252fpasswd" },
+  { label: "Dữ liệu an toàn", payload: "Hello, this is a normal search query" },
 ];
 
 export default function WAFCheck() {
@@ -44,9 +45,9 @@ export default function WAFCheck() {
     <div>
       <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
         <ShieldAlert className="w-8 h-8 text-emerald-400" />
-        WAF Test
+        Kiểm tra WAF
       </h1>
-      <p className="text-gray-400 mb-8">Test Web Application Firewall — Detect SQL Injection, XSS, Command Injection</p>
+      <p className="text-gray-400 mb-8">Kiểm tra Tường lửa Ứng dụng Web — Phát hiện SQL Injection, XSS, Command Injection</p>
 
       {/* Input */}
       <form onSubmit={handleCheck} className="mb-6">
@@ -54,7 +55,7 @@ export default function WAFCheck() {
           <textarea
             value={payload}
             onChange={(e) => setPayload(e.target.value)}
-            placeholder="Enter payload to test... e.g. ' OR 1=1 --"
+            placeholder="Nhập payload để kiểm tra... ví dụ: ' OR 1=1 --"
             rows={3}
             className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none font-mono text-sm resize-none"
           />
@@ -64,14 +65,14 @@ export default function WAFCheck() {
             className="px-6 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors self-end flex items-center gap-2 py-3"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Check
+            Kiểm tra
           </button>
         </div>
       </form>
 
       {/* Example Payloads */}
       <div className="mb-6">
-        <p className="text-xs text-gray-500 mb-2">Quick test payloads:</p>
+        <p className="text-xs text-gray-500 mb-2">Payload thử nhanh:</p>
         <div className="flex flex-wrap gap-2">
           {EXAMPLE_PAYLOADS.map((ex, i) => (
             <button key={i}
@@ -106,7 +107,7 @@ export default function WAFCheck() {
               )}
               <div>
                 <h2 className={`text-2xl font-bold ${result.detected ? 'text-red-400' : 'text-emerald-400'}`}>
-                  {result.action === 'BLOCKED' ? '🚫 BLOCKED — Attack Detected' : '✅ ALLOWED — Safe Input'}
+                  {result.action === 'BLOCKED' ? '🚫 BỊ CHẶN — Phát hiện tấn công' : '✅ CHO PHÉP — Dữ liệu an toàn'}
                 </h2>
                 {result.attacks && result.attacks.length > 0 && (
                   <div className="flex gap-2 mt-2">
@@ -136,21 +137,21 @@ export default function WAFCheck() {
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="w-5 h-5 text-purple-400" />
-                <h3 className="text-sm font-semibold text-white uppercase">AI / ML Analysis</h3>
+                <h3 className="text-sm font-semibold text-white uppercase">Phân tích AI / ML</h3>
                 <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded ml-auto">
-                  {result.detection_method === 'hybrid' ? 'Hybrid (Regex + ML)' : 'Regex Only'}
+                  {result.detection_method === 'hybrid' ? 'Kết hợp (Regex + ML)' : 'Chỉ Regex'}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="bg-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">ML Prediction</p>
+                  <p className="text-xs text-gray-500 mb-1">Dự đoán ML</p>
                   <p className={`text-lg font-bold ${result.ml_analysis.is_attack ? 'text-red-400' : 'text-emerald-400'}`}>
                     {result.ml_analysis.predicted_name || 'N/A'}
                   </p>
                 </div>
                 <div className="bg-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">ML Confidence</p>
+                  <p className="text-xs text-gray-500 mb-1">Độ tin cậy ML</p>
                   <p className="text-lg font-bold text-white">
                     {(result.ml_analysis.confidence * 100).toFixed(1)}%
                   </p>
@@ -166,7 +167,7 @@ export default function WAFCheck() {
               {/* Probability bars */}
               {result.ml_analysis.probabilities && Object.keys(result.ml_analysis.probabilities).length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Class Probabilities</p>
+                  <p className="text-xs text-gray-500 mb-2">Xác suất các lớp</p>
                   <div className="space-y-1.5">
                     {Object.entries(result.ml_analysis.probabilities)
                       .sort(([,a], [,b]) => b - a)
@@ -194,10 +195,21 @@ export default function WAFCheck() {
 
           {/* Tested Payload */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">Tested Payload</h3>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">Payload đã kiểm tra</h3>
             <code className="text-sm text-amber-300 bg-gray-800 px-3 py-2 rounded block break-all">
               {result.payload}
             </code>
+          </div>
+
+          {/* Export PDF */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => exportWAFCheckPDF(result, payload)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors text-sm"
+            >
+              <FileDown className="w-4 h-4" />
+              Xuất báo cáo PDF
+            </button>
           </div>
         </div>
       )}
@@ -216,12 +228,12 @@ function AttackCard({ name, data }) {
         <span className={`text-xs px-2 py-0.5 rounded font-medium ${
           data.detected ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
         }`}>
-          {data.detected ? 'DETECTED' : 'CLEAN'}
+          {data.detected ? 'PHÁT HIỆN' : 'AN TOÀN'}
         </span>
       </div>
       <div className="flex justify-between text-xs text-gray-500">
-        <span>Matched rules: {data.matched_rules}</span>
-        <span>Severity: {data.severity}</span>
+        <span>Luật khớp: {data.matched_rules}</span>
+        <span>Mức độ: {data.severity}</span>
       </div>
       {data.detected && (
         <div className="mt-2 h-1.5 bg-gray-800 rounded-full overflow-hidden">

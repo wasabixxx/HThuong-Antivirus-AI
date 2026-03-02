@@ -16,8 +16,12 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# Load .env
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+# Load .env — thử nhiều path để đảm bảo tìm được .env
+_env_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"))
+load_dotenv(_env_path)
+# Fallback: tìm .env từ cwd nếu path trên không load được
+if not os.getenv("VT_API_KEY"):
+    load_dotenv(os.path.join(os.getcwd(), ".env"))
 
 # Add engine to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -282,15 +286,21 @@ async def scan_file(file: UploadFile = File(...)):
             return result
 
         # === LAYER 4: Anomaly Detection (Isolation Forest) ===
+        # Context-aware: khi 3 tầng trước đều sạch, yêu cầu confidence cao hơn
+        # Tránh false positive cho file hợp lệ từ hãng lớn
         if anomaly_engine.is_loaded:
             anomaly_result = anomaly_engine.check(tmp_path)
             result["layers"]["anomaly_detection"] = anomaly_result
 
-            if anomaly_result.get("detected"):
+            # Yêu cầu confidence >= 0.65 khi tất cả tầng trước đều clean
+            min_conf = 0.65
+            anomaly_conf = anomaly_result.get("confidence", 0)
+
+            if anomaly_result.get("detected") and anomaly_conf >= min_conf:
                 result.update({
                     "detected": True,
                     "method": "anomaly_detection",
-                    "confidence": anomaly_result.get("confidence", 0),
+                    "confidence": anomaly_conf,
                     "threat_level": anomaly_result.get("threat_level", "medium"),
                     "anomaly_score": anomaly_result.get("anomaly_score"),
                     "message": "Anomalous file detected by AI (Isolation Forest)",

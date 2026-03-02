@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { FolderSearch, Send, ShieldCheck, ShieldAlert, Loader2, Brain, FileWarning, CheckCircle2, Circle, HardDrive, Search, Cpu } from 'lucide-react';
+import { FolderSearch, Send, ShieldCheck, ShieldAlert, Loader2, Brain, FileWarning, CheckCircle2, Circle, HardDrive, Search, Cpu, FileDown } from 'lucide-react';
 import { scanDirectory } from '../api';
+import { exportDirectoryScanPDF } from '../pdfExport';
 
 const SCAN_PHASES = [
-  { id: 'connect', name: 'Connecting', desc: 'Validating directory path...', time: 400 },
-  { id: 'enumerate', name: 'Enumerating files', desc: 'Walking directory tree (max 200 files)', time: 800 },
-  { id: 'hash', name: 'Hash DB Check', desc: 'SHA-256 lookup in ~39,000 signatures', time: 1500 },
-  { id: 'heuristic', name: 'Heuristic Analysis', desc: 'Entropy + pattern + PE header analysis', time: 2000 },
-  { id: 'anomaly', name: 'AI Anomaly Detection', desc: 'Isolation Forest ML model analysis', time: 3000 },
-  { id: 'report', name: 'Generating Report', desc: 'Compiling results...', time: 500 },
+  { id: 'connect', name: 'Kết nối', desc: 'Đang xác thực đường dẫn thư mục...', time: 400 },
+  { id: 'enumerate', name: 'Liệt kê tệp', desc: 'Duyệt cây thư mục (tối đa 200 tệp)', time: 800 },
+  { id: 'hash', name: 'Kiểm tra Hash DB', desc: 'Tra cứu SHA-256 trong ~39.000 chữ ký', time: 1500 },
+  { id: 'heuristic', name: 'Phân tích Heuristic', desc: 'Entropy + mẫu đáng ngờ + tiêu đề PE', time: 2000 },
+  { id: 'anomaly', name: 'Phát hiện bất thường AI', desc: 'Mô hình ML Isolation Forest', time: 3000 },
+  { id: 'report', name: 'Tạo báo cáo', desc: 'Đang tổng hợp kết quả...', time: 500 },
 ];
 
 export default function DirectoryScan() {
@@ -72,9 +73,9 @@ export default function DirectoryScan() {
     <div>
       <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
         <FolderSearch className="w-8 h-8 text-emerald-400" />
-        Directory Scan
+        Quét thư mục
       </h1>
-      <p className="text-gray-400 mb-8">Scan all files in a directory using Hash DB + Heuristic + AI Anomaly Detection</p>
+      <p className="text-gray-400 mb-8">Quét toàn bộ tệp trong thư mục bằng Hash DB + Heuristic + Phát hiện bất thường AI</p>
 
       {/* Input */}
       <form onSubmit={handleScan} className="mb-6">
@@ -82,7 +83,7 @@ export default function DirectoryScan() {
           <input
             value={dirPath}
             onChange={(e) => setDirPath(e.target.value)}
-            placeholder="Enter directory path... e.g. C:\Users\Downloads"
+            placeholder="Nhập đường dẫn thư mục... ví dụ: C:\Users\Downloads"
             className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none font-mono text-sm"
           />
           <button
@@ -91,7 +92,7 @@ export default function DirectoryScan() {
             className="px-6 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 py-3"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Scan
+            Quét
           </button>
         </div>
       </form>
@@ -101,7 +102,7 @@ export default function DirectoryScan() {
         <div className="mb-6 bg-gray-900 border border-gray-800 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-            <p className="text-emerald-400 font-medium">Scanning directory...</p>
+            <p className="text-emerald-400 font-medium">Đang quét thư mục...</p>
           </div>
           <div className="space-y-2">
             {SCAN_PHASES.map((phase, idx) => {
@@ -164,11 +165,11 @@ export default function DirectoryScan() {
               <div>
                 <h2 className={`text-2xl font-bold ${result.threats_found > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {result.threats_found > 0
-                    ? `⚠️ ${result.threats_found} Threat${result.threats_found > 1 ? 's' : ''} Found`
-                    : '✅ Directory Clean'}
+                    ? `⚠️ Phát hiện ${result.threats_found} mối đe dọa`
+                    : '✅ Thư mục an toàn'}
                 </h2>
                 <p className="text-gray-400 text-sm mt-1">
-                  Scanned {result.files_scanned} files in {result.scan_time}s
+                  Đã quét {result.files_scanned} tệp trong {result.scan_time} giây
                 </p>
               </div>
             </div>
@@ -176,10 +177,10 @@ export default function DirectoryScan() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Files Scanned" value={result.files_scanned} color="text-blue-400" />
-            <StatCard label="Threats Found" value={result.threats_found} color={result.threats_found > 0 ? 'text-red-400' : 'text-emerald-400'} />
-            <StatCard label="Clean Files" value={result.files_scanned - result.threats_found} color="text-emerald-400" />
-            <StatCard label="Scan Time" value={`${result.scan_time}s`} color="text-amber-400" />
+            <StatCard label="Tệp đã quét" value={result.files_scanned} color="text-blue-400" />
+            <StatCard label="Mối đe dọa" value={result.threats_found} color={result.threats_found > 0 ? 'text-red-400' : 'text-emerald-400'} />
+            <StatCard label="Tệp an toàn" value={result.files_scanned - result.threats_found} color="text-emerald-400" />
+            <StatCard label="Thời gian" value={`${result.scan_time}s`} color="text-amber-400" />
           </div>
 
           {/* Threats List */}
@@ -187,7 +188,7 @@ export default function DirectoryScan() {
             <div className="bg-gray-900 border border-red-500/30 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-red-400 uppercase mb-3 flex items-center gap-2">
                 <FileWarning className="w-4 h-4" />
-                Detected Threats ({threats.length})
+                Mối đe dọa phát hiện ({threats.length})
               </h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {threats.map((file, i) => (
@@ -214,11 +215,22 @@ export default function DirectoryScan() {
             </div>
           )}
 
+          {/* Export PDF */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => exportDirectoryScanPDF(result)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors text-sm"
+            >
+              <FileDown className="w-4 h-4" />
+              Xuất báo cáo PDF
+            </button>
+          </div>
+
           {/* Clean Files (collapsed) */}
           {clean.length > 0 && (
             <details className="bg-gray-900 border border-gray-800 rounded-xl">
               <summary className="p-5 cursor-pointer text-sm font-semibold text-gray-400 uppercase hover:text-white transition-colors">
-                Clean Files ({clean.length}) — Click to expand
+                Tệp an toàn ({clean.length}) — Nhấp để mở rộng
               </summary>
               <div className="px-5 pb-5 space-y-1 max-h-64 overflow-y-auto">
                 {clean.map((file, i) => (

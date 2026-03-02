@@ -1,8 +1,8 @@
 {
   "model_type": "IsolationForest",
-  "trained_samples": 525,
-  "normal_samples": 500,
-  "anomaly_samples": 25,
+  "trained_samples": 740,
+  "normal_samples": 700,
+  "anomaly_samples": 40,
   "contamination": 0.05,
   "n_estimators": 150,
   "features": [
@@ -14,5 +14,11 @@
     "null_byte_ratio",
     "printable_ratio",
     "unique_bytes"
-  ]
+  ],
+  "normal_groups": {
+    "text_script_config": 200,
+    "pe_executable": 250,
+    "compressed_media": 150,
+    "dll_system": 100
+  }
 }

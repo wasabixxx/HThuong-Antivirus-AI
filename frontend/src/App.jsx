@@ -11,12 +11,12 @@ import ScanHistory from './pages/ScanHistory';
 import DirectoryScan from './pages/DirectoryScan';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'file-scan', label: 'File Scan', icon: FileSearch },
-  { id: 'dir-scan', label: 'Directory Scan', icon: FolderSearch },
-  { id: 'url-scan', label: 'URL Scan', icon: Globe },
-  { id: 'waf', label: 'WAF Test', icon: ShieldAlert },
-  { id: 'history', label: 'Scan History', icon: History },
+  { id: 'dashboard', label: 'Tổng quan', icon: BarChart3 },
+  { id: 'file-scan', label: 'Quét tệp tin', icon: FileSearch },
+  { id: 'dir-scan', label: 'Quét thư mục', icon: FolderSearch },
+  { id: 'url-scan', label: 'Quét URL', icon: Globe },
+  { id: 'waf', label: 'Kiểm tra WAF', icon: ShieldAlert },
+  { id: 'history', label: 'Lịch sử quét', icon: History },
 ];
 
 export default function App() {
@@ -83,7 +83,7 @@ export default function App() {
           <div className="p-4 border-t border-gray-800">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-xs text-gray-400">Engine Active</span>
+              <span className="text-xs text-gray-400">Hệ thống hoạt động</span>
             </div>
           </div>
         )}

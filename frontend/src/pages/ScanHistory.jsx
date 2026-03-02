@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { History, ShieldAlert, ShieldCheck, Globe, FileSearch, ShieldX, Trash2, RefreshCw, Download, Filter } from 'lucide-react';
+import { History, ShieldAlert, ShieldCheck, Globe, FileSearch, ShieldX, Trash2, RefreshCw, Download, Filter, FileDown } from 'lucide-react';
 import { getHistory, clearHistory } from '../api';
+import { exportHistoryPDF } from '../pdfExport';
 
 export default function ScanHistory() {
   const [history, setHistory] = useState([]);
@@ -32,7 +33,7 @@ export default function ScanHistory() {
   }
 
   async function handleClear() {
-    if (!confirm('Clear all scan history?')) return;
+    if (!confirm('Xóa toàn bộ lịch sử quét?')) return;
     try {
       await clearHistory();
       setHistory([]);
@@ -128,22 +129,22 @@ export default function ScanHistory() {
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <History className="w-8 h-8 text-emerald-400" />
-            Scan History
+            Lịch sử quét
           </h1>
           <p className="text-gray-400 mt-1">
-            Total: {total} scans · Showing: {filtered.length}
+            Tổng: {total} lượt quét · Hiển thị: {filtered.length}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => handleExport('csv')} title="Export CSV"
+          <button onClick={() => handleExport('csv')} title="Xuất CSV"
             className="p-2 text-gray-400 hover:text-emerald-400 transition-colors" disabled={filtered.length === 0}>
             <Download className="w-5 h-5" />
           </button>
-          <button onClick={handleClear} title="Clear history"
+          <button onClick={handleClear} title="Xóa lịch sử"
             className="p-2 text-gray-400 hover:text-red-400 transition-colors">
             <Trash2 className="w-5 h-5" />
           </button>
-          <button onClick={loadHistory} title="Refresh"
+          <button onClick={loadHistory} title="Làm mới"
             className="p-2 text-gray-400 hover:text-white transition-colors">
             <RefreshCw className="w-5 h-5" />
           </button>
@@ -153,9 +154,9 @@ export default function ScanHistory() {
       {/* Quick Filters */}
       <div className="flex gap-2 mb-4 flex-wrap items-center">
         {[
-          { id: 'all', label: 'All' },
-          { id: 'threats', label: 'Threats Only' },
-          { id: 'clean', label: 'Clean Only' },
+          { id: 'all', label: 'Tất cả' },
+          { id: 'threats', label: 'Chỉ mối đe dọa' },
+          { id: 'clean', label: 'Chỉ an toàn' },
         ].map(f => (
           <button key={f.id}
             onClick={() => setFilterDetected(f.id)}
@@ -176,7 +177,7 @@ export default function ScanHistory() {
             }`}
           >
             <Filter className="w-4 h-4" />
-            Advanced
+            Nâng cao
           </button>
         </div>
       </div>
@@ -186,28 +187,28 @@ export default function ScanHistory() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Type filter */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Scan Type</label>
+            <label className="text-xs text-gray-500 mb-1 block">Loại quét</label>
             <select value={filterType} onChange={e => setFilterType(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
-              <option value="all">All Types</option>
+              <option value="all">Tất cả loại</option>
               {uniqueTypes.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
             </select>
           </div>
           {/* Threat Level filter */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Threat Level</label>
+            <label className="text-xs text-gray-500 mb-1 block">Mức độ đe dọa</label>
             <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
-              <option value="all">All Levels</option>
+              <option value="all">Tất cả mức</option>
               {uniqueLevels.map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
             </select>
           </div>
           {/* Method filter */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Detection Method</label>
+            <label className="text-xs text-gray-500 mb-1 block">Phương thức phát hiện</label>
             <select value={filterMethod} onChange={e => setFilterMethod(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
-              <option value="all">All Methods</option>
+              <option value="all">Tất cả phương thức</option>
               {uniqueMethods.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
@@ -219,25 +220,29 @@ export default function ScanHistory() {
         <div className="flex gap-2 mb-4">
           <button onClick={() => handleExport('csv')}
             className="text-xs px-3 py-1.5 bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-1">
-            <Download className="w-3 h-3" /> Export CSV
+            <Download className="w-3 h-3" /> Xuất CSV
           </button>
           <button onClick={() => handleExport('json')}
             className="text-xs px-3 py-1.5 bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-1">
-            <Download className="w-3 h-3" /> Export JSON
+            <Download className="w-3 h-3" /> Xuất JSON
+          </button>
+          <button onClick={() => exportHistoryPDF(filtered)}
+            className="text-xs px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30 rounded-lg transition-colors flex items-center gap-1">
+            <FileDown className="w-3 h-3" /> Xuất PDF
           </button>
           <span className="text-xs text-gray-600 self-center ml-2">
-            {filtered.length} records
+            {filtered.length} bản ghi
           </span>
         </div>
       )}
 
       {/* List */}
       {loading ? (
-        <div className="text-center text-gray-500 py-12">Loading...</div>
+        <div className="text-center text-gray-500 py-12">Đang tải...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center text-gray-500 py-12">
           <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No scan history matching filters.</p>
+          <p>Không có lịch sử quét phù hợp với bộ lọc.</p>
         </div>
       ) : (
         <div className="space-y-2">

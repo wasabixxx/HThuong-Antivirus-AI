@@ -44,6 +44,10 @@ class AnomalyEngine:
     MODEL_PATH = os.path.join(MODEL_DIR, "isolation_forest.joblib")
     METADATA_PATH = os.path.join(MODEL_DIR, "anomaly_metadata.json")
 
+    # Ngưỡng confidence tối thiểu để flag anomaly
+    # Tránh false positive cho file hợp lệ có anomaly score thấp
+    MIN_CONFIDENCE_THRESHOLD = 0.55
+
     def __init__(self):
         self.model = None
         self.is_loaded = False
@@ -84,46 +88,99 @@ class AnomalyEngine:
     def _train_baseline(self):
         """
         Huấn luyện baseline model trên synthetic normal file features.
-        Đặc trưng file bình thường:
-        - Entropy thấp-trung bình (3.0 - 6.5)
-        - Suspicious patterns ít (0-2)
-        - Network patterns ít (0-3)
-        - Null ratio trung bình (0.05-0.4)
-        - Printable ratio cao (0.5-0.95)
+        Bao gồm nhiều nhóm file bình thường thực tế:
+        
+        Nhóm 1 — Văn bản, script, config (entropy thấp):
+          Entropy 2.5-5.5, printable cao, ít suspicious patterns
+        
+        Nhóm 2 — PE executable hợp lệ (entropy trung bình-cao):
+          Entropy 5.5-7.8, nhiều unique bytes (230-256), 
+          có network/suspicious patterns vì phần mềm hợp lệ chứa cmd.exe, http://, encrypt...
+        
+        Nhóm 3 — File nén, installer, media (entropy cao):
+          Entropy 7.0-7.99, file lớn, printable ratio thấp
+        
+        Nhóm anomaly — File thực sự đáng ngờ:
+          Kết hợp entropy cao + RẤT NHIỀU suspicious patterns + file nhỏ bất thường
         """
         np.random.seed(42)
-        n_normal = 500
 
-        # Generate normal file features
-        normal_data = np.column_stack([
-            np.random.uniform(3.0, 6.5, n_normal),           # entropy
-            np.random.lognormal(10, 2, n_normal),             # file_size (log-normal)
-            np.random.poisson(0.5, n_normal),                 # suspicious_patterns
-            np.random.poisson(1.0, n_normal),                 # network_patterns
-            np.random.binomial(1, 0.3, n_normal),             # is_pe
-            np.random.uniform(0.05, 0.40, n_normal),          # null_byte_ratio
-            np.random.uniform(0.50, 0.95, n_normal),          # printable_ratio
-            np.random.uniform(80, 220, n_normal),             # unique_bytes
+        # === Nhóm 1: Văn bản, script, config, source code ===
+        n_text = 200
+        text_data = np.column_stack([
+            np.random.uniform(2.5, 5.5, n_text),             # entropy thấp (text)
+            np.random.lognormal(9, 2, n_text),                # file_size đa dạng
+            np.random.poisson(0.3, n_text),                   # rất ít suspicious
+            np.random.poisson(0.8, n_text),                   # ít network patterns
+            np.zeros(n_text),                                 # không phải PE
+            np.random.uniform(0.01, 0.15, n_text),           # ít null bytes
+            np.random.uniform(0.65, 0.98, n_text),           # printable ratio cao
+            np.random.uniform(60, 180, n_text),              # unique bytes trung bình
         ])
 
-        # Thêm một số samples "giống malware" (5%) để model biết anomaly boundary
-        n_anomaly = 25
+        # === Nhóm 2: PE executable hợp lệ (phần mềm từ hãng lớn) ===
+        # Ví dụ: Chrome, Office, driver, system tools...
+        # Có entropy cao do nén, nhiều strings chứa http, cmd, encrypt...
+        n_pe = 250
+        pe_data = np.column_stack([
+            np.random.uniform(5.5, 7.8, n_pe),               # entropy cao (compressed sections)
+            np.random.lognormal(12, 2.5, n_pe),              # file size lớn (MB range)
+            np.random.poisson(3.0, n_pe),                    # có suspicious patterns (bình thường cho software)
+            np.random.poisson(4.0, n_pe),                    # nhiều network patterns (http, connect, socket)
+            np.ones(n_pe),                                   # là PE file
+            np.random.uniform(0.05, 0.50, n_pe),             # null byte ratio đa dạng
+            np.random.uniform(0.15, 0.65, n_pe),             # printable ratio thấp hơn (binary)
+            np.random.uniform(200, 256, n_pe),               # gần đủ 256 unique bytes
+        ])
+
+        # === Nhóm 3: File nén, installer, media, database ===
+        n_compressed = 150
+        compressed_data = np.column_stack([
+            np.random.uniform(7.0, 7.99, n_compressed),      # entropy rất cao (nén)
+            np.random.lognormal(13, 2, n_compressed),         # file size lớn
+            np.random.poisson(1.0, n_compressed),             # ít suspicious (dữ liệu nén)
+            np.random.poisson(1.5, n_compressed),             # ít network
+            np.random.binomial(1, 0.2, n_compressed),         # ít khi là PE
+            np.random.uniform(0.00, 0.15, n_compressed),      # ít null bytes
+            np.random.uniform(0.05, 0.35, n_compressed),      # printable ratio rất thấp
+            np.random.uniform(230, 256, n_compressed),        # gần đủ unique bytes
+        ])
+
+        # === Nhóm 4: DLL, system files ===
+        n_dll = 100
+        dll_data = np.column_stack([
+            np.random.uniform(5.0, 7.5, n_dll),              # entropy trung bình-cao
+            np.random.lognormal(11, 2, n_dll),                # file size đa dạng
+            np.random.poisson(2.0, n_dll),                    # một số suspicious patterns
+            np.random.poisson(2.5, n_dll),                    # một số network patterns
+            np.ones(n_dll),                                   # luôn là PE
+            np.random.uniform(0.10, 0.50, n_dll),             # null byte ratio
+            np.random.uniform(0.20, 0.70, n_dll),             # printable ratio
+            np.random.uniform(180, 256, n_dll),               # nhiều unique bytes
+        ])
+
+        # === Nhóm anomaly: File thực sự đáng ngờ ===
+        # Đặc trưng: file NHỎ + entropy cao + RẤT NHIỀU suspicious + nhiều network
+        # Đây là dấu hiệu malware dropper, payload, backdoor
+        n_anomaly = 40
         anomaly_data = np.column_stack([
-            np.random.uniform(7.0, 8.0, n_anomaly),          # high entropy
-            np.random.lognormal(8, 1, n_anomaly),             # small files
-            np.random.poisson(5, n_anomaly),                  # nhiều suspicious patterns
-            np.random.poisson(4, n_anomaly),                  # nhiều network patterns
-            np.ones(n_anomaly),                               # always PE
-            np.random.uniform(0.0, 0.05, n_anomaly),          # low null ratio
-            np.random.uniform(0.1, 0.4, n_anomaly),           # low printable ratio
-            np.random.uniform(200, 256, n_anomaly),           # high unique bytes
+            np.random.uniform(6.5, 8.0, n_anomaly),          # entropy cao
+            np.random.lognormal(7, 1.5, n_anomaly),           # file NHỎ (dropper/payload ~KB)
+            np.random.poisson(8, n_anomaly),                  # RẤT NHIỀU suspicious patterns (>8)
+            np.random.poisson(6, n_anomaly),                  # nhiều network patterns
+            np.random.binomial(1, 0.7, n_anomaly),            # thường là PE
+            np.random.uniform(0.0, 0.08, n_anomaly),          # null ratio rất thấp
+            np.random.uniform(0.10, 0.45, n_anomaly),         # printable ratio thấp
+            np.random.uniform(150, 256, n_anomaly),           # unique bytes
         ])
 
+        normal_data = np.vstack([text_data, pe_data, compressed_data, dll_data])
         training_data = np.vstack([normal_data, anomaly_data])
 
         self.model.fit(training_data)
         self.is_loaded = True
 
+        n_normal = len(normal_data)
         # Save
         os.makedirs(self.MODEL_DIR, exist_ok=True)
         joblib.dump(self.model, self.MODEL_PATH)
@@ -139,11 +196,17 @@ class AnomalyEngine:
                 "entropy", "file_size", "suspicious_patterns", "network_patterns",
                 "is_pe", "null_byte_ratio", "printable_ratio", "unique_bytes"
             ],
+            "normal_groups": {
+                "text_script_config": n_text,
+                "pe_executable": n_pe,
+                "compressed_media": n_compressed,
+                "dll_system": n_dll,
+            },
         }
         with open(self.METADATA_PATH, "w", encoding="utf-8") as f:
             json.dump(self.metadata, f, indent=2, ensure_ascii=False)
 
-        print(f"[AnomalyEngine] Baseline model trained — {len(training_data)} samples")
+        print(f"[AnomalyEngine] Baseline model trained — {len(training_data)} samples ({n_normal} normal + {n_anomaly} anomaly)")
 
     def extract_features(self, file_path: str) -> np.ndarray | None:
         """Extract feature vector từ file"""
@@ -236,6 +299,12 @@ class AnomalyEngine:
             confidence = max(0.0, min(1.0, 0.5 - float(raw_score)))
 
             is_anomaly = bool(prediction == -1)
+
+            # Chỉ flag là detected khi confidence đủ cao
+            # Tránh false positive: file hợp lệ thường có anomaly score gần ranh giới
+            # nhưng confidence thấp → không nên cảnh báo
+            if is_anomaly and confidence < self.MIN_CONFIDENCE_THRESHOLD:
+                is_anomaly = False
 
             # Determine threat level
             if confidence >= 0.7:

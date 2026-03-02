@@ -1,0 +1,28 @@
+{
+  "name": "HThuong Antivirus AI",
+  "short_name": "HThuong AV",
+  "description": "Hệ thống bảo mật web tích hợp Trí Tuệ Nhân Tạo — Quét virus, phân tích heuristic, phát hiện bất thường AI, tường lửa WAF",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#34d399",
+  "orientation": "any",
+  "categories": ["security", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "lang": "vi",
+  "dir": "ltr"
+}
