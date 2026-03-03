@@ -58,9 +58,9 @@
 
 ## 🐛 Bugs đã biết
 
-- [ ] **Hash DB path lồng 2 tầng** — `database/HashDataBase/HashDataBase/Sha256/` (thư mục lồng 2 lần)
-- [ ] **Large file trên GitHub** — `legacy/md5HashOfVirus.unibit` (~62MB) trigger cảnh báo
-- [ ] **VT URL scan chờ cứng 5s** — `time.sleep(5)` có thể thiếu data nếu VT chưa xong
+- [x] **Hash DB path lồng 2 tầng** — `database/HashDataBase/HashDataBase/Sha256/` (thư mục lồng 2 lần)
+- [x] **Large file trên GitHub** — `legacy/md5HashOfVirus.unibit` (~62MB) trigger cảnh báo
+- [x] **VT URL scan chờ cứng 5s** — `time.sleep(5)` có thể thiếu data nếu VT chưa xong
 
 ---
 
